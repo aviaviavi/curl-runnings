@@ -1,0 +1,69 @@
+[
+  {
+    "name": "test 1",
+    "url": "http://sd.ddpay.io/status",
+    "requestMethod": "GET",
+    "expectData": {
+        "tag": "Exactly",
+        "contents": {
+            "okay": true,
+            "msg": ""
+        }
+    },
+    "expectStatus": {
+        "tag": "ExactCode",
+        "contents": 200
+    },
+    "requestData": null
+  },
+
+  {
+    "name": "test 2",
+    "url": "http://sd.ddpay.io/status",
+    "requestMethod": "GET",
+    "expectData": {
+        "tag": "Contains",
+        "contents": true
+    },
+    "expectStatus": {
+      "tag": "AnyCodeIn",
+      "contents": [200, 300]
+    },
+    "requestData": null
+  },
+
+  {
+    "name": "test 3",
+    "url": "http://sd.ddpay.io/status",
+    "requestMethod": "GET",
+    "expectData": {
+        "tag": "Contains",
+        "contents": {
+            "okay": true,
+            "msg": ""
+        }
+    },
+    "expectStatus": {
+      "tag": "AnyCodeIn",
+      "contents": [200, 300]
+    },
+    "requestData": null
+  },
+
+  {
+    "name": "test 4",
+    "url": "http://sd.ddpay.io/status",
+    "requestMethod": "GET",
+    "expectData": {
+        "tag": "Contains",
+        "contents": {
+            "okay": false
+        }
+    },
+    "expectStatus": {
+      "tag": "AnyCodeIn",
+      "contents": [200, 300]
+    },
+    "requestData": null
+  }
+]
