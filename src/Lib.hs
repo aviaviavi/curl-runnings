@@ -4,7 +4,6 @@
 module Lib
     (
       SmokeSuite(..)
-
     , SmokeCase(..)
     , HttpMethod(..)
     , JsonMatcher(..)
@@ -42,7 +41,7 @@ data JsonMatcher
   -- | Performs `==`
   = Exactly Value
   -- | Will check for membership, For objects, this object must be an exact subobject
-  | Contains Value
+  | Contains [Value]
   deriving (Show, Generic)
 
 instance FromJSON JsonMatcher
@@ -84,7 +83,7 @@ instance Show AssertionFailure where
     AnyCodeIn codes -> "Incorrect status code from " ++ url c ++ ". Expected one of: " ++ show codes ++ ". Actual: " ++ show receivedCode
   show (DataFailure c val) = case expectData c of
     Just (Exactly v) -> "JSON response from " ++ url c ++ " didn't match spec. Expected: " ++ B8.unpack (encodePretty v) ++ ". Actual: " ++ B8.unpack (encodePretty val)
-    Just (Contains v) -> "JSON response from " ++ url c ++ " didn't contain the matcher. Expected: " ++ B8.unpack (encodePretty v) ++ " to be a subvalue in: " ++ B8.unpack (encodePretty val)
+    Just (Contains v) -> "JSON response from " ++ url c ++ " didn't contain the matcher. Expected: " ++ B8.unpack (encodePretty v) ++ " to be each be subvalues in: " ++ B8.unpack (encodePretty val)
   show _ = "Unexpected Error D:"
 
 data CaseResult
@@ -108,7 +107,7 @@ instance ToJSON SmokeSuite
 runCase :: SmokeCase -> IO CaseResult
 runCase smokeCase = do
   initReq <- parseRequest $ url smokeCase
-  response <- httpBS . setRequestBodyJSON (requestData smokeCase) $ initReq {method = (B8S.pack . show $ requestMethod smokeCase)}
+  response <- httpBS . setRequestBodyJSON (requestData smokeCase) $ initReq {method = B8S.pack . show $ requestMethod smokeCase}
   returnVal <-
     (return . decode . B.fromStrict $ getResponseBody response) :: IO (Maybe Value)
   let returnCode = getResponseStatusCode response
@@ -151,13 +150,13 @@ checkBody smokeCase@(SmokeCase _ _ _ _ (Just (Exactly expectedValue)) _) (Just r
     Just $ DataFailure smokeCase (Just receivedBody)
   | otherwise = Nothing
 checkBody smokeCase Nothing = Just $ DataFailure smokeCase Nothing
-checkBody smokeCase@(SmokeCase _ _ _ _ (Just (Contains expectedSubvalue)) _) (Just receivedBody)
-  | valueContains receivedBody expectedSubvalue = Nothing
+checkBody smokeCase@(SmokeCase _ _ _ _ (Just (Contains expectedSubvalues)) _) (Just receivedBody)
+  | valueContainsAll receivedBody expectedSubvalues = Nothing
   | otherwise = Just $ DataFailure smokeCase (Just receivedBody)
 
-valueContains :: Value -> Value -> Bool
-valueContains val subval =
-  subval `elem` traverseValue val
+valueContainsAll :: Value -> [Value] -> Bool
+valueContainsAll val =
+  all (\subval -> subval `elem` traverseValue val)
 
 traverseValue :: Value -> [Value]
 traverseValue val =

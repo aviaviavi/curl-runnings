@@ -17,7 +17,7 @@ import Network.HTTP.Simple
 
 main :: IO ()
 main = do
-  suite <- eitherDecode' <$> B.readFile "app/test.json5" :: IO (Either String SmokeSuite)
+  suite <- eitherDecode' <$> B.readFile "app/test.json" :: IO (Either String SmokeSuite)
   case suite of
     Right s -> void $ runSuite s
     Left messgage -> putStrLn $ "Couldn't read input as json: " ++ messgage
