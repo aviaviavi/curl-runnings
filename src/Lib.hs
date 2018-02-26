@@ -15,12 +15,14 @@ module Lib
 
 import           Control.Monad
 import           Data.Aeson
+import           Data.Aeson.Types
 import           Data.Aeson.Encode.Pretty
 import qualified Data.ByteString.Char8      as B8S
 import qualified Data.ByteString.Lazy       as B
 import qualified Data.ByteString.Lazy.Char8 as B8
 import qualified Data.HashMap.Strict        as H
 import           Data.Maybe
+import qualified Data.Text                  as T
 import           GHC.Generics
 import           Network.HTTP.Conduit
 import           Network.HTTP.Simple
@@ -41,13 +43,22 @@ instance ToJSON HttpMethod
 data JsonMatcher
   -- | Performs `==`
   = Exactly Value
-  -- | Will check for membership, For objects, this object must be an exact subobject
-  | Contains [Value]
+  -- | Will check for membership. For objects, this object must be an exact subobject
+  | Contains [JsonSubExpr]
   deriving (Show, Generic)
 
 instance FromJSON JsonMatcher
 
 instance ToJSON JsonMatcher
+
+data JsonSubExpr = ValueMatch Value | KeyValueMatch {
+  matchKey :: T.Text,
+  matchValue :: Value
+                                                    } deriving (Show, Generic)
+
+instance FromJSON JsonSubExpr
+
+instance ToJSON JsonSubExpr
 
 data StatusCodeMatcher
   = ExactCode Int
@@ -164,12 +175,22 @@ checkBody smokeCase@(SmokeCase _ _ _ _ (Just (Exactly expectedValue)) _) (Just r
   | otherwise = Nothing
 checkBody smokeCase Nothing = Just $ DataFailure smokeCase Nothing
 checkBody smokeCase@(SmokeCase _ _ _ _ (Just (Contains expectedSubvalues)) _) (Just receivedBody)
-  | valueContainsAll receivedBody expectedSubvalues = Nothing
+  | jsonContainsAll receivedBody expectedSubvalues = Nothing
   | otherwise = Just $ DataFailure smokeCase (Just receivedBody)
+checkBody (SmokeCase _ _ _ _ Nothing _) _ = Nothing
 
-valueContainsAll :: Value -> [Value] -> Bool
-valueContainsAll val =
-  all (\subval -> subval `elem` traverseValue val)
+jsonContainsAll :: Value -> [JsonSubExpr] -> Bool
+jsonContainsAll json =
+  all (\match -> case match  of
+          ValueMatch subval -> subval `elem` traverseValue json
+          KeyValueMatch key subval ->
+            containsKeyVal json key subval
+      )
+
+containsKeyVal :: Value -> T.Text -> Value -> Bool
+containsKeyVal json key val = case json of
+  Object o -> isJust $ H.lookup key o
+  _ -> False
 
 traverseValue :: Value -> [Value]
 traverseValue val =

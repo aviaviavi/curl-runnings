@@ -7,9 +7,11 @@ import Control.Monad
 import Data.Aeson
 import qualified Data.ByteString.Lazy as B
 import Data.Maybe
+import           Data.Aeson.Encode.Pretty
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Text.Lazy.Encoding
+import qualified Data.ByteString.Lazy.Char8 as B8
 import GHC.Generics
 import Lib
 import Network.HTTP.Conduit
