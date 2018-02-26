@@ -5,6 +5,7 @@ module Lib
     (
       SmokeSuite(..)
     , SmokeCase(..)
+
     , HttpMethod(..)
     , JsonMatcher(..)
     , StatusCodeMatcher(..)
@@ -83,10 +84,14 @@ instance FromJSON SmokeCase
 instance ToJSON SmokeCase
 
 data AssertionFailure
-  = DataFailure SmokeCase
-                (Maybe Value)
-  | StatusFailure SmokeCase
-                  Int
+  -- | The json we got back was wrong we include this redundant field (it's
+  -- included in the SmokeCase field above) in order to enforce at the type
+  -- level that we have to be expecting some data in order to have this type of
+  -- failure.
+  = DataFailure SmokeCase JsonMatcher (Maybe Value)
+  -- | The status code we got back was wrong
+  | StatusFailure SmokeCase Int
+  -- | Something else
   | UnexpectedFailure
 
 instance Show AssertionFailure where
@@ -99,16 +104,16 @@ instance Show AssertionFailure where
       (url c)
       (show codes)
       (show receivedCode)
-  show (DataFailure c val) = case expectData c of
-    Just (Exactly v) -> printf "JSON response from %s didn't match spec. Expected: %s. Actual: %s"
-      (url c)
-      (B8.unpack (encodePretty v))
-      (B8.unpack (encodePretty val))
-    Just (Contains v) -> printf "JSON response from %s didn't contain the matcher. Expected: %s to be each be subvalues in: %s"
-      (url c)
-      (B8.unpack (encodePretty v))
-      (B8.unpack (encodePretty val))
-  show _ = "Unexpected Error D:"
+  show (DataFailure smokeCase expected receivedVal) = case expected of
+    Exactly expectedVal -> printf "JSON response from %s didn't match spec. Expected: %s. Actual: %s"
+      (url smokeCase)
+      (B8.unpack (encodePretty expectedVal))
+      (B8.unpack (encodePretty receivedVal))
+    (Contains expectedVals) -> printf "JSON response from %s didn't contain the matcher. Expected: %s to be each be subvalues in: %s"
+      (url smokeCase)
+      (B8.unpack (encodePretty expectedVals))
+      (B8.unpack (encodePretty receivedVal))
+  show UnexpectedFailure = "Unexpected Error D:"
 
 data CaseResult
   = CasePass SmokeCase
@@ -169,14 +174,14 @@ runSuite (SmokeSuite cases) =
     cases
 
 checkBody :: SmokeCase -> Maybe Value -> Maybe AssertionFailure
-checkBody smokeCase@(SmokeCase _ _ _ _ (Just (Exactly expectedValue)) _) (Just receivedBody)
+checkBody smokeCase@(SmokeCase _ _ _ _ (Just matcher@(Exactly expectedValue)) _) (Just receivedBody)
   | expectedValue /= receivedBody =
-    Just $ DataFailure smokeCase (Just receivedBody)
+    Just $ DataFailure smokeCase matcher (Just receivedBody)
   | otherwise = Nothing
-checkBody smokeCase Nothing = Just $ DataFailure smokeCase Nothing
-checkBody smokeCase@(SmokeCase _ _ _ _ (Just (Contains expectedSubvalues)) _) (Just receivedBody)
+checkBody _ Nothing = Nothing
+checkBody smokeCase@(SmokeCase _ _ _ _ (Just matcher@(Contains expectedSubvalues)) _) (Just receivedBody)
   | jsonContainsAll receivedBody expectedSubvalues = Nothing
-  | otherwise = Just $ DataFailure smokeCase (Just receivedBody)
+  | otherwise = Just $ DataFailure smokeCase matcher (Just receivedBody)
 checkBody (SmokeCase _ _ _ _ Nothing _) _ = Nothing
 
 jsonContainsAll :: Value -> [JsonSubExpr] -> Bool

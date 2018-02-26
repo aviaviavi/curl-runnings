@@ -55,22 +55,21 @@
     "name": "test 4",
     "url": "http://sd.ddpay.io/v1/DevOnlyGetAllCustomerIds",
     "requestMethod": "POST",
+    "expectStatus": {
+      "tag": "ExactCode",
+      "contents": 400
+    },
+    "requestData": {}
+  },
+  {
+    "name": "test 5",
+    "url": "http://sd.ddpay.io/v1/DevOnlyGetAllCustomerIds",
+    "requestMethod": "POST",
     "expectData": null,
     "expectStatus": {
       "tag": "AnyCodeIn",
       "contents": [401]
     },
     "requestData": {"api_token": "asdf"}
-  },
-
-  {
-    "name": "test 5",
-    "url": "http://sd.ddpay.io/v1/DevOnlyGetAllCustomerIds",
-    "requestMethod": "POST",
-    "expectStatus": {
-      "tag": "ExactCode",
-      "contents": 400
-    },
-    "requestData": {}
   }
 ]
