@@ -15,15 +15,16 @@ module Lib
 
 import           Control.Monad
 import           Data.Aeson
-import Data.Aeson.Encode.Pretty
-import qualified Data.ByteString.Lazy    as B
-import qualified Data.ByteString.Lazy.Char8    as B8
-import qualified Data.ByteString.Char8    as B8S
-import qualified Data.HashMap.Strict     as H
+import           Data.Aeson.Encode.Pretty
+import qualified Data.ByteString.Char8      as B8S
+import qualified Data.ByteString.Lazy       as B
+import qualified Data.ByteString.Lazy.Char8 as B8
+import qualified Data.HashMap.Strict        as H
 import           Data.Maybe
 import           GHC.Generics
 import           Network.HTTP.Conduit
 import           Network.HTTP.Simple
+import           Text.Printf
 
 data HttpMethod
   = GET
@@ -79,11 +80,23 @@ data AssertionFailure
 
 instance Show AssertionFailure where
   show (StatusFailure c receivedCode) = case expectStatus c of
-    ExactCode code -> "Incorrect status code from " ++ url c ++ ". Expected: " ++ show code ++ ". Actual: " ++ show receivedCode
-    AnyCodeIn codes -> "Incorrect status code from " ++ url c ++ ". Expected one of: " ++ show codes ++ ". Actual: " ++ show receivedCode
+    ExactCode code -> printf "Incorrect status code from %s. Expected: %s. Actual: %s"
+      (url c)
+      (show code)
+      (show receivedCode)
+    AnyCodeIn codes -> printf "Incorrect status code from %s. Expected one of: %s. Actual: %s"
+      (url c)
+      (show codes)
+      (show receivedCode)
   show (DataFailure c val) = case expectData c of
-    Just (Exactly v) -> "JSON response from " ++ url c ++ " didn't match spec. Expected: " ++ B8.unpack (encodePretty v) ++ ". Actual: " ++ B8.unpack (encodePretty val)
-    Just (Contains v) -> "JSON response from " ++ url c ++ " didn't contain the matcher. Expected: " ++ B8.unpack (encodePretty v) ++ " to be each be subvalues in: " ++ B8.unpack (encodePretty val)
+    Just (Exactly v) -> printf "JSON response from %s didn't match spec. Expected: %s. Actual: %s"
+      (url c)
+      (B8.unpack (encodePretty v))
+      (B8.unpack (encodePretty val))
+    Just (Contains v) -> printf "JSON response from %s didn't contain the matcher. Expected: %s to be each be subvalues in: %s"
+      (url c)
+      (B8.unpack (encodePretty v))
+      (B8.unpack (encodePretty val))
   show _ = "Unexpected Error D:"
 
 data CaseResult
@@ -92,9 +105,9 @@ data CaseResult
              [AssertionFailure]
 
 instance Show CaseResult where
-  show (CasePass c) = "[PASS] " ++ name c
+  show (CasePass c) = makeGreen "[PASS] " ++ name c
   show (CaseFail c failures) =
-    "[FAIL] " ++ name c ++ "\n" ++ concatMap ((\s -> "\nAssertion failed: " ++ s) . (++"\n") . show) failures
+    makeRed "[FAIL] " ++ name c ++ "\n" ++ concatMap ((\s -> "\nAssertion failed: " ++ s) . (++"\n") . show) failures
 
 newtype SmokeSuite =
   SmokeSuite [SmokeCase]
@@ -175,3 +188,9 @@ checkCode smokeCase@(SmokeCase _ _ _ _ _ (ExactCode expectedCode)) receivedCode
 checkCode smokeCase@(SmokeCase _ _ _ _ _ (AnyCodeIn l)) receivedCode
   | receivedCode `notElem` l = Just $ StatusFailure smokeCase receivedCode
   | otherwise = Nothing
+
+makeGreen :: String -> String
+makeGreen s = "\x1B[32m" ++  s ++ "\x1B[0m"
+
+makeRed :: String -> String
+makeRed s = "\x1B[31m" ++ s ++ "\x1B[0m"
