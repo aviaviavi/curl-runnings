@@ -50,6 +50,8 @@ executables:
     - template-haskell
     - bytestring
     - http-conduit
+    - yaml
+    - cmdargs
 
 tests:
   smoke-test:
