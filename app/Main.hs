@@ -1,31 +1,25 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-
 {-# LANGUAGE OverloadedStrings  #-}
 
 module Main where
 
 import           Control.Monad
 import           Data.Aeson
-import qualified Data.ByteString.Char8      as B8S
-import qualified Data.ByteString.Lazy       as B
-import qualified Data.ByteString.Lazy.Char8 as B8
-import           Data.List
-import           Data.Maybe
-import qualified Data.Text                  as T
-import qualified Data.Text.IO               as TIO
-import           Data.Text.Lazy.Encoding
-import qualified Data.Yaml                  as Y
-import           GHC.Generics
-import           Network.HTTP.Conduit
-import           Network.HTTP.Simple
+import qualified Data.ByteString.Char8           as B8S
+import qualified Data.ByteString.Lazy            as B
+import qualified Data.Text                       as T
+import qualified Data.Yaml                       as Y
 import           System.Console.CmdArgs
-import System.Console.CmdArgs.Explicit(process,helpText, HelpFormat(..))
+import           System.Console.CmdArgs.Explicit (HelpFormat (..), helpText)
 import           System.Environment
 import           System.Exit
+import           Testing.CurlRunnings
+import           Testing.CurlRunnings.Types
+import           Testing.CurlRunnings.Internal
 import           Text.Printf
-import Lib
 
 
+-- | Command line flags
 data CurlRunnings = CurlRunnings {
   file :: FilePath
                          } deriving (Show, Data, Typeable, Eq)
@@ -43,6 +37,7 @@ decodeFile specPath =
 
 exitWithHelp :: IO a
 exitWithHelp = do
+  -- add the list of flags to add to help here. an odd quirk of cmdargs...
   putStr $ show $ helpText ["file"] HelpFormatDefault $ cmdArgsMode argParser
   exitSuccess
 
@@ -55,5 +50,10 @@ main = do
       home <- getEnv "HOME"
       suite <- decodeFile . T.unpack $ T.replace "~" (T.pack home) (T.pack path)
       case suite of
-        Right s       -> void $ runSuite s
+        Right s -> do
+          results <- runSuite s
+          if any isFailing results then
+            putStrLn (makeRed "Some tests failed") >> exitWith (ExitFailure 1)
+          else
+            putStrLn $ makeGreen "All tests passed!"
         Left messgage -> putStrLn $ "Couldn't read input as json: " ++ messgage

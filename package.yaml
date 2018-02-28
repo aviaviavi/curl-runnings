@@ -1,4 +1,4 @@
-name:                smoke
+name:                curl-runnings
 version:             0.1.0.0
 github:              "githubuser/smoke"
 license:             BSD3
@@ -24,6 +24,10 @@ dependencies:
 
 library:
   source-dirs: src
+  exposed-modules:
+  - Testing.CurlRunnings
+  - Testing.CurlRunnings.Types
+  - Testing.CurlRunnings.Internal
   dependencies:
   - parsec
   - aeson
@@ -35,7 +39,7 @@ library:
   - aeson-pretty
 
 executables:
-  smoke-exe:
+  curl-runnings:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -43,7 +47,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - smoke
+    - curl-runnings
     - parsec
     - aeson
     - text
@@ -54,7 +58,7 @@ executables:
     - cmdargs
 
 tests:
-  smoke-test:
+  curl-runnings-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -62,4 +66,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - smoke
+    - curl-runnings
