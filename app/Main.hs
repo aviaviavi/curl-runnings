@@ -3,7 +3,6 @@
 
 module Main where
 
-import           Control.Monad
 import           Data.Aeson
 import qualified Data.ByteString.Char8           as B8S
 import qualified Data.ByteString.Lazy            as B
@@ -24,10 +23,12 @@ data CurlRunnings = CurlRunnings {
   file :: FilePath
                          } deriving (Show, Data, Typeable, Eq)
 
+-- | cmdargs object
 argParser :: CurlRunnings
 argParser = CurlRunnings { file = def &= typFile &= help "File to run"
                          } &= summary "curl-runnings 0.0.0" &= program "curl-runnings" &= help "Use the --help flag to see the basics of curl-runnings."
 
+-- | decode a json or yaml file into a suite object
 decodeFile :: FilePath -> IO (Either String SmokeSuite)
 decodeFile specPath =
   case last $ T.splitOn "." (T.pack specPath) of

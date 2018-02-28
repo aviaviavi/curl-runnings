@@ -1,5 +1,7 @@
+-- | This module specifies any utilities used by this package. At this time,
+-- consider everything in this module to be private to the curl-runnings package
 module Testing.CurlRunnings.Internal (
-  makeRed
+    makeRed
   , makeGreen
                                      ) where
 
