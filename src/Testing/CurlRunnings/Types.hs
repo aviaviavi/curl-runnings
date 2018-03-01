@@ -3,8 +3,8 @@
 
 -- | Data types for curl-runnings tests
 module Testing.CurlRunnings.Types
-  ( SmokeSuite(..)
-  , SmokeCase(..)
+  ( CurlSuite(..)
+  , CurlCase(..)
   , HttpMethod(..)
   , JsonMatcher(..)
   , JsonSubExpr(..)
@@ -75,7 +75,7 @@ instance FromJSON StatusCodeMatcher
 instance ToJSON StatusCodeMatcher
 
 -- | A single curl test case, the basic foundation of a curl-runnings test.
-data SmokeCase = SmokeCase
+data CurlCase = CurlCase
   { name :: String -- ^ The name of the test case
   , url :: String -- ^ The target url to test
   , requestMethod :: HttpMethod -- ^ Berb to use for the request
@@ -84,22 +84,22 @@ data SmokeCase = SmokeCase
   , expectStatus :: StatusCodeMatcher -- ^ Assertion about the status code returned by the target
   } deriving (Show, Generic)
 
-instance FromJSON SmokeCase
+instance FromJSON CurlCase
 
-instance ToJSON SmokeCase
+instance ToJSON CurlCase
 
 -- | Represents the different type of test failures we can have. A single test case
 -- | might return many assertion failures.
 data AssertionFailure
   -- | The json we got back was wrong. We include this redundant field (it's
-  -- included in the SmokeCase field above) in order to enforce at the type
+  -- included in the CurlCase field above) in order to enforce at the type
   -- level that we have to be expecting some data in order to have this type of
   -- failure.
-  = DataFailure SmokeCase
+  = DataFailure CurlCase
                 JsonMatcher
                 (Maybe Value)
   -- | The status code we got back was wrong
-  | StatusFailure SmokeCase
+  | StatusFailure CurlCase
                   Int
   -- | Something else
   | UnexpectedFailure
@@ -119,25 +119,25 @@ instance Show AssertionFailure where
           (url c)
           (show codes)
           (show receivedCode)
-  show (DataFailure smokeCase expected receivedVal) =
+  show (DataFailure curlCase expected receivedVal) =
     case expected of
       Exactly expectedVal ->
         printf
           "JSON response from %s didn't match spec. Expected: %s. Actual: %s"
-          (url smokeCase)
+          (url curlCase)
           (B8.unpack (encodePretty expectedVal))
           (B8.unpack (encodePretty receivedVal))
       (Contains expectedVals) ->
         printf
           "JSON response from %s didn't contain the matcher. Expected: %s to be each be subvalues in: %s"
-          (url smokeCase)
+          (url curlCase)
           (B8.unpack (encodePretty expectedVals))
           (B8.unpack (encodePretty receivedVal))
   show UnexpectedFailure = "Unexpected Error D:"
 
 data CaseResult
-  = CasePass SmokeCase
-  | CaseFail SmokeCase
+  = CasePass CurlCase
+  | CaseFail CurlCase
              [AssertionFailure]
 
 instance Show CaseResult where
@@ -148,13 +148,13 @@ instance Show CaseResult where
     "\n" ++
     concatMap ((\s -> "\nAssertion failed: " ++ s) . (++ "\n") . show) failures
 
-newtype SmokeSuite =
-  SmokeSuite [SmokeCase]
+newtype CurlSuite =
+  CurlSuite [CurlCase]
   deriving (Show, Generic)
 
-instance FromJSON SmokeSuite
+instance FromJSON CurlSuite
 
-instance ToJSON SmokeSuite
+instance ToJSON CurlSuite
 
 isPassing :: CaseResult -> Bool
 isPassing (CasePass _) = True

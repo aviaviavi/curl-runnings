@@ -1,5 +1,7 @@
 # curl-runnings
 
+[![Build Status](https://travis-ci.org/aviaviavi/curl-runnings.svg?branch=master)](https://travis-ci.org/aviaviavi/curl-runnings)
+
 A framework for writing declarative curl based tests.
 
 ### Why?
