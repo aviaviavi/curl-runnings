@@ -32,8 +32,9 @@ script: |
   echo "building binary version $version" &&
   stack $ARGS --no-terminal --install-ghc --haddock install &&
   strip $HOME/.local/bin/curl-runnings &&
-  tar -czvf $HOME/.local/bin/curl-runnings-$version.tar.gz $HOME/.local/bin/curl-runnings &&
-  ln -s $HOME/.local/bin/curl-runnings-$version.tar.gz $HOME/.local/bin/curl-runnings.tar.gz
+  cd $HOME/.local/bin/ &&
+  tar -czvf curl-runnings-$version.tar.gz curl-runnings &&
+  ln -s curl-runnings-$version.tar.gz curl-runnings.tar.gz
 
 # Caching so the next build will be fast too.
 cache:
