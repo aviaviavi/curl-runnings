@@ -37,6 +37,7 @@ A test spec is a top level list of test cases, each item represents a single cur
 - name: test 1 # required
   url: http://your-endpoint.com # required
   requestMethod: GET # required
+  # specify the json payload we expect here, if any
   expectData: # optional
     # `tag` refers to the type of matcher we want to use
     # valid tags are `Exactly` | `Contains`
@@ -71,12 +72,10 @@ A test spec is a top level list of test cases, each item represents a single cur
     tag: Contains
     contents:
     # valid tags are `ValueMatch` | `KeyValueMatch`
-    # find the value true anywhere in the payload
+    # find the value `true` anywhere in the payload. This can be useful for matching against values 
+    # where you don't know the key ahead of time, or for values in a top level array.
     - tag: ValueMatch
       contents: true
-    # find the value of contents as a value anywhere in the payload
-    - tag: ValueMatch
-      contents: 'some string'
     # `KeyValueMatch` looks for the key/value pair anywhere in the payload
     # here, {'okay': true} must be somewhere in the return payload
     - tag: KeyValueMatch
@@ -89,17 +88,21 @@ A test spec is a top level list of test cases, each item represents a single cur
 
 ### Running
 
-Write a test spec in yaml or json, then run it with:
+Once you've written a spec, simply run it with:
 
 ```bash
 $ curl-runnings -f path/to/your/spec.yaml
 ```
+
+If all your tests pass, curl-runnings will cleanly exit with a 0 code. A code of
+1 will be returned if any tests failed.
 
 For more info:
 
 ```bash
 $ curl-runnings --help
 ```
+
 
 ### Future work
 
