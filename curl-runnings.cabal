@@ -2,17 +2,17 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2326f1270059dbbbf4e86836c2463fa337f15fb4c2c43ee4d951eff890390587
+-- hash: 6221a5f65cd70372fa1119a941837db052f4aa98a7379d09e5e28b36ff53f009
 
 name:           curl-runnings
-version:        0.1.0.0
-description:    Please see the README on Github at <https://github.com/githubuser/smoke#readme>
-homepage:       https://github.com/githubuser/smoke#readme
-bug-reports:    https://github.com/githubuser/smoke/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2018 Author name here
-license:        BSD3
+version:        0.1.0
+description:    Please see the README on Github at <https://github.com/aviaviavi/curl-runnings#readme>
+homepage:       https://github.com/aviaviavi/curl-runnings#readme
+bug-reports:    https://github.com/aviaviavi/curl-runnings/issues
+author:         Avi Press
+maintainer:     mail@avi.press
+copyright:      2018 Avi Press
+license:        MIT
 license-file:   LICENSE
 build-type:     Simple
 cabal-version:  >= 1.10
@@ -22,7 +22,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/smoke
+  location: https://github.com/aviaviavi/curl-runnings
 
 library
   hs-source-dirs:
