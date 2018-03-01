@@ -44,5 +44,5 @@ addons:
   artifacts:
     s3_region: "us-west-2"
     paths:
-      $HOME/.local/bin/curl-runnings-*.tar.gz
+      - $HOME/.local/bin/*.tar.gz
     branch: master
