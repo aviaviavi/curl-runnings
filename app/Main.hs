@@ -29,7 +29,7 @@ argParser =
   CurlRunnings {file = def &= typFile &= help "File to run"} &=
   summary ("curl-runnings " ++ showVersion version) &=
   program "curl-runnings" &=
-  help "Use the --help flag to see the basics of curl-runnings."
+  help "Use the --file or -f flag to specify an intput file spec to run"
 
 -- | decode a json or yaml file into a suite object
 decodeFile :: FilePath -> IO (Either String CurlSuite)
