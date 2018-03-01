@@ -32,8 +32,9 @@ argParser = CurlRunnings { file = def &= typFile &= help "File to run"
 decodeFile :: FilePath -> IO (Either String SmokeSuite)
 decodeFile specPath =
   case last $ T.splitOn "." (T.pack specPath) of
-    "json" -> eitherDecode' <$> B.readFile specPath :: IO (Either String SmokeSuite)
+    "json" -> eitherDecode'  <$> B.readFile specPath   :: IO (Either String SmokeSuite)
     "yaml" -> Y.decodeEither <$> B8S.readFile specPath :: IO (Either String SmokeSuite)
+    "yml"  -> Y.decodeEither <$> B8S.readFile specPath :: IO (Either String SmokeSuite)
     _ -> return . Left $ printf "Invalid specPath: %s. Please supply a yaml or json file" (T.pack specPath)
 
 exitWithHelp :: IO a
