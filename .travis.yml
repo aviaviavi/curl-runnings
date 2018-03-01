@@ -33,7 +33,7 @@ script: |
   stack $ARGS --no-terminal --install-ghc --haddock install &&
   strip $HOME/.local/bin/curl-runnings &&
   tar -czvf $HOME/.local/bin/curl-runnings-$version.tar.gz $HOME/.local/bin/curl-runnings &&
-  echo "~/.local/bin:  $(ls $HOME/.local/bin)"
+  ln -s $HOME/.local/bin/curl-runnings-$version.tar.gz $HOME/.local/bin/curl-runnings.tar.gz
 
 # Caching so the next build will be fast too.
 cache:
@@ -44,5 +44,5 @@ addons:
   artifacts:
     s3_region: "us-west-2"
     paths:
-      - $HOME/.local/bin/*.tar.gz
+      - $HOME/.local/bin/curl-runnings.tar.gz
     branch: master
