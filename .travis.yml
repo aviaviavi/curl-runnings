@@ -34,8 +34,8 @@ cache:
   directories:
   - $HOME/.stack
 
-
 addons:
   artifacts:
+    s3_region: "us-west-2"
     paths:
       $HOME/.local/bin/curl-runnings
