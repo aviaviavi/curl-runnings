@@ -29,10 +29,10 @@ before_install:
 # `--no-terminal works` around some quirks in Travis's terminal implementation.
 script: |
   version=$(grep "^version" curl-runnings.cabal | sed 's/ //g'  | cut -d ':' -f 2) &&
-  archive="curl-runnings-$version.tar.gz" &&
+  echo "building binary version $version" &&
   stack $ARGS --no-terminal --install-ghc --haddock install &&
   strip $HOME/.local/bin/curl-runnings &&
-  tar -czvf $HOME/.local/bin/curl-runnings.tar.gz $HOME/.local/bin/curl-runnings
+  tar -czvf $HOME/.local/bin/curl-runnings-$version.tar.gz $HOME/.local/bin/curl-runnings
 
 # Caching so the next build will be fast too.
 cache:
@@ -43,5 +43,5 @@ addons:
   artifacts:
     s3_region: "us-west-2"
     paths:
-      $HOME/.local/bin/curl-runnings*.tar.gz
+      $HOME/.local/bin/curl-runnings-*.tar.gz
     branch: master
