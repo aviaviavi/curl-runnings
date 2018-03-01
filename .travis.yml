@@ -38,4 +38,4 @@ cache:
 addons:
   artifacts:
     paths:
-      $HOME/.local/curl-runnings
+      $HOME/.local/bin/curl-runnings
