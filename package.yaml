@@ -1,10 +1,12 @@
 name:                curl-runnings
 version:             0.1.0
-github:              "aviaviavi/curl-runnings"
+github:              aviaviavi/curl-runnings
 license:             MIT
-author:              "Avi Press"
-maintainer:          "mail@avi.press"
-copyright:           "2018 Avi Press"
+author:              Avi Press
+maintainer:          mail@avi.press
+copyright:           2018 Avi Press
+category:            Testing
+synopsis:            A framework for declaratively writing curl based API tests
 
 extra-source-files:
 - README.md
