@@ -44,7 +44,7 @@ decodeFile specPath =
     _ ->
       return . Left $
       printf
-        "Invalid specPath: %s. Please supply a yaml or json file"
+        "Invalid spec path %s"
         (T.pack specPath)
 
 main :: IO ()
@@ -64,4 +64,4 @@ main = do
             then putStrLn (makeRed "Some tests failed") >>
                  exitWith (ExitFailure 1)
             else putStrLn $ makeGreen "All tests passed!"
-        Left messgage -> putStrLn $ "Couldn't read input as json: " ++ messgage
+        Left messgage -> putStrLn $ "Couldn't read input json or yaml file: " ++ messgage
