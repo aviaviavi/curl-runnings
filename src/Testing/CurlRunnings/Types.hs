@@ -135,6 +135,8 @@ instance Show AssertionFailure where
           (B8.unpack (encodePretty receivedVal))
   show UnexpectedFailure = "Unexpected Error D:"
 
+-- | A type representing the result of a single curl, and all associated
+-- assertions
 data CaseResult
   = CasePass CurlCase
   | CaseFail CurlCase
@@ -148,6 +150,8 @@ instance Show CaseResult where
     "\n" ++
     concatMap ((\s -> "\nAssertion failed: " ++ s) . (++ "\n") . show) failures
 
+-- | A wrapper type around a set of test cases. This is the top level spec type
+-- that we parse a test spec file into
 newtype CurlSuite =
   CurlSuite [CurlCase]
   deriving (Show, Generic)
@@ -156,10 +160,12 @@ instance FromJSON CurlSuite
 
 instance ToJSON CurlSuite
 
+-- | Simple predicate that checks if the result is passing
 isPassing :: CaseResult -> Bool
 isPassing (CasePass _) = True
 isPassing (CaseFail _ _) = False
 
+-- | Simple predicate that checks if the result is failing
 isFailing :: CaseResult -> Bool
 isFailing (CasePass _) = False
 isFailing (CaseFail _ _) = True
