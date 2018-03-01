@@ -2,7 +2,9 @@
 
 [![Build Status](https://travis-ci.org/aviaviavi/curl-runnings.svg?branch=master)](https://travis-ci.org/aviaviavi/curl-runnings)
 
-A framework for writing declarative curl based tests.
+Feel the rhythm! Feel the rhyme! Get on up, it's testing time! curl-runnings!
+
+curl-runnings is a framework for writing declarative, curl based tests for your APIs. 
 
 ### Why?
 
