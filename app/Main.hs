@@ -53,7 +53,7 @@ main = do
   case file mainArgs of
     "" ->
       putStrLn
-        "Please specify an input file with the -f flag or use --help for more information"
+        "Please specify an input file with the --file (-f) flag or use --help for more information"
     path -> do
       home <- getEnv "HOME"
       suite <- decodeFile . T.unpack $ T.replace "~" (T.pack home) (T.pack path)
