@@ -2,9 +2,13 @@
 
 [![Build Status](https://travis-ci.org/aviaviavi/curl-runnings.svg?branch=master)](https://travis-ci.org/aviaviavi/curl-runnings)
 
-Feel the rhythm! Feel the rhyme! Get on up, it's testing time! curl-runnings!
+_Feel the rhythm! Feel the rhyme! Get on up, it's testing time! curl-runnings!_
 
 curl-runnings is a framework for writing declarative, curl based tests for your APIs. 
+
+Write your tests quickly and correctly with a straight-forward specification in
+yaml or json. A DSL for writing your tests is on the way! Alternatively, you can
+use the curl-runnings library to write your tests directly in Haskell.
 
 ### Why?
 
@@ -27,9 +31,10 @@ language, which is a future goal for the project
 
 There are few options to install:
 
-- clone this repo and run `stack install`
-- download the releases 
-- (soon) - `cabal install curl-runnings`
+- download the releases from the github [releases page](https://github.com/aviaviavi/curl-runnings/releases)
+- `stack install curl-runnings`
+- `cabal install curl-runnings`
+- build from source with `stack`
 
 ### Writing a test specification
 
@@ -106,7 +111,6 @@ For more info:
 ```bash
 $ curl-runnings --help
 ```
-
 
 ### Future work
 
