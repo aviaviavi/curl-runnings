@@ -10,6 +10,7 @@ synopsis:            A framework for declaratively writing curl based API tests
 
 extra-source-files:
 - README.md
+- examples/*
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package

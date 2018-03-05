@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: cfe881850805a50f7b1df3674847c63384a109dc276bae21cef541dd5f022eeb
+-- hash: 5ba21bafee5c2e642cec1c0c7bff81b86f715d883cc524542a61d787f7aca778
 
 name:           curl-runnings
 version:        0.2.0
@@ -20,6 +20,9 @@ build-type:     Simple
 cabal-version:  >= 1.10
 
 extra-source-files:
+    examples/example-spec.json
+    examples/example-spec.yaml
+    examples/test.json
     README.md
 
 source-repository head
