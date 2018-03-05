@@ -1,0 +1,46 @@
+---
+# The top level of the file is an array of test cases
+- name: test 1 # required
+  url: http://your-endpoint.com/status # required
+  requestMethod: GET # required
+  # [Optional] Specify the json payload we expect here
+  # The 1 key in this block should be either:
+  # exactly | contains
+  expectData:
+    # The 1 key in this object specifies the matcher we want
+    # to use to test the returned payload. In this case, we
+    # require the payload is exactly what we specify.
+    exactly:
+      okay: true
+      msg: 'a message'
+  # [Required] Assertions about the returned status code. Pass in
+  # an acceptable code or list of codes
+  expectStatus: 200
+- name: test 2
+  url: http://your-endpoint.com/path
+  requestMethod: POST
+  expectStatus:
+  - 200
+  - 201
+  # [Optional] json data to send with the request
+  requestData:
+    hello: there
+    num: 1
+- name: test 3
+  url: http://your-url.com/other/path
+  requestMethod: GET
+  expectData:
+    # In the `contains` case of data validation, a list of matchers is specified. Currently,
+    # possible types are `valueMatch` | `keyValueMatch`.
+    contains:
+    # `keyValueMatch` looks for the key/value pair anywhere in the payload
+    # here, {'okay': true} must be somewhere in the return payload
+    - keyValueMatch:
+        key: okay
+        value: true
+    # `valueMatch` searches for a value anywhere in the payload (note: _not_ a key).
+    # Here, we look for the value `true` anywhere in the payload.
+    # This can be useful for matching against values where you don't know the key ahead of time,
+    # or for values in a top level array.
+    - valueMatch: true
+  expectStatus: 200

@@ -1,0 +1,46 @@
+[
+  {
+    "name": "test 1",
+    "url": "http://your-endpoint.com/status",
+    "requestMethod": "GET",
+    "expectData": {
+      "exactly": {
+        "okay": true,
+        "msg": "a message"
+      }
+    },
+    "expectStatus": 200
+  },
+  {
+    "name": "test 2",
+    "url": "http://your-endpoint.com/path",
+    "requestMethod": "POST",
+    "expectStatus": [
+      200,
+      201
+    ],
+    "requestData": {
+      "hello": "there",
+      "num": 1
+    }
+  },
+  {
+    "name": "test 3",
+    "url": "http://your-url.com/other/path",
+    "requestMethod": "GET",
+    "expectData": {
+      "contains": [
+        {
+          "keyValueMatch": {
+            "key": "okay",
+            "value": true
+          }
+        },
+        {
+          "valueMatch": true
+        }
+      ]
+    },
+    "expectStatus": 200
+  }
+]

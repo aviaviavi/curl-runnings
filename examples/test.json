@@ -1,0 +1,75 @@
+[
+  {
+    "name": "test 1",
+    "url": "http://sd.ddpay.io/status",
+    "requestMethod": "GET",
+    "expectData": {
+        "tag": "Exactly",
+        "contents": {
+            "okay": true,
+            "msg": ""
+        }
+    },
+    "expectStatus": {
+        "tag": "ExactCode",
+        "contents": 200
+    },
+    "requestData": null
+  },
+
+  {
+    "name": "test 2",
+    "url": "http://sd.ddpay.io/status",
+    "requestMethod": "GET",
+    "expectData": {
+        "tag": "Contains",
+        "contents": [
+          {
+            "tag": "ValueMatch",
+            "contents": true
+          },
+          {
+            "tag": "ValueMatch",
+            "contents": ""
+          },
+          {
+            "tag": "KeyValueMatch",
+            "matchKey": "msg",
+            "matchValue": ""
+          },
+          {
+            "tag": "KeyValueMatch",
+            "matchKey": "okay",
+            "matchValue": true
+          }
+                      ]
+    },
+    "expectStatus": {
+      "tag": "AnyCodeIn",
+      "contents": [200, 300]
+    },
+    "requestData": null
+  },
+
+  {
+    "name": "test 4",
+    "url": "http://sd.ddpay.io/v1/DevOnlyGetAllCustomerIds",
+    "requestMethod": "POST",
+    "expectStatus": {
+      "tag": "ExactCode",
+      "contents": 400
+    },
+    "requestData": {}
+  },
+  {
+    "name": "test 5",
+    "url": "http://sd.ddpay.io/v1/DevOnlyGetAllCustomerIds",
+    "requestMethod": "POST",
+    "expectData": null,
+    "expectStatus": {
+      "tag": "AnyCodeIn",
+      "contents": [401]
+    },
+    "requestData": {"api_token": "asdf"}
+  }
+]
