@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Data types for curl-runnings tests
@@ -15,13 +15,16 @@ module Testing.CurlRunnings.Types
   , isFailing
   ) where
 
-import Data.Aeson
-import Data.Aeson.Encode.Pretty
-import qualified Data.ByteString.Lazy.Char8 as B8
-import qualified Data.Text as T
-import GHC.Generics
-import Text.Printf
-import Testing.CurlRunnings.Internal
+import           Data.Aeson
+import           Data.Aeson.Encode.Pretty
+import           Data.Aeson.Types
+import qualified Data.ByteString.Lazy.Char8    as B8
+import qualified Data.HashMap.Strict           as H
+import           Data.Maybe
+import qualified Data.Text                     as T
+import           GHC.Generics
+import           Testing.CurlRunnings.Internal
+import           Text.Printf
 
 -- | A basic enum for supported HTTP verbs
 data HttpMethod
@@ -42,12 +45,15 @@ data JsonMatcher
   = Exactly Value
   -- | A list of matchers to make assertions about some subset of the response.
   | Contains [JsonSubExpr]
-
   deriving (Show, Generic)
 
-instance FromJSON JsonMatcher
-
 instance ToJSON JsonMatcher
+
+instance FromJSON JsonMatcher where
+  parseJSON (Object v)
+    | isJust $ H.lookup "exactly" v = Exactly <$> v .: "exactly"
+    | isJust $ H.lookup "contains" v = Contains <$> v .: "contains"
+  parseJSON invalid = typeMismatch "JsonMatcher" invalid
 
 -- | A matcher for a subvalue of a json payload
 data JsonSubExpr
@@ -56,12 +62,19 @@ data JsonSubExpr
   --  top level array. It's also useful if you don't know the key ahead of time.
   = ValueMatch Value
   -- | Assert the key value pair can be found somewhere the json.
-  | KeyValueMatch { matchKey :: T.Text
+  | KeyValueMatch { matchKey   :: T.Text
                   , matchValue :: Value }
   deriving (Show, Generic)
 
-instance FromJSON JsonSubExpr
-
+instance FromJSON JsonSubExpr where
+  parseJSON (Object v)
+    | isJust $ H.lookup "keyValueMatch" v =
+      let toParse = fromJust $ H.lookup "keyValueMatch" v
+      in case toParse of
+           Object o -> KeyValueMatch <$> o .: "key" <*> o .: "value"
+           _        -> typeMismatch "JsonSubExpr" toParse
+    | isJust $ H.lookup "valueMatch" v = ValueMatch <$> v .: "valueMatch"
+  parseJSON invalid = typeMismatch "JsonSubExpr" invalid
 instance ToJSON JsonSubExpr
 
 -- | Check the status code of a response. You can specify one or many valid codes.
@@ -70,18 +83,21 @@ data StatusCodeMatcher
   | AnyCodeIn [Int]
   deriving (Show, Generic)
 
-instance FromJSON StatusCodeMatcher
-
 instance ToJSON StatusCodeMatcher
+
+instance FromJSON StatusCodeMatcher where
+  parseJSON obj@(Number _) = ExactCode <$> parseJSON obj
+  parseJSON obj@(Array _)  = AnyCodeIn <$> parseJSON obj
+  parseJSON invalid        = typeMismatch "StatusCodeMatcher" invalid
 
 -- | A single curl test case, the basic foundation of a curl-runnings test.
 data CurlCase = CurlCase
-  { name :: String -- ^ The name of the test case
-  , url :: String -- ^ The target url to test
+  { name          :: String -- ^ The name of the test case
+  , url           :: String -- ^ The target url to test
   , requestMethod :: HttpMethod -- ^ Berb to use for the request
-  , requestData :: Maybe Value -- ^ Payload to send with the request, if any
-  , expectData :: Maybe JsonMatcher -- ^ The assertions to make on the response payload, if any
-  , expectStatus :: StatusCodeMatcher -- ^ Assertion about the status code returned by the target
+  , requestData   :: Maybe Value -- ^ Payload to send with the request, if any
+  , expectData    :: Maybe JsonMatcher -- ^ The assertions to make on the response payload, if any
+  , expectStatus  :: StatusCodeMatcher -- ^ Assertion about the status code returned by the target
   } deriving (Show, Generic)
 
 instance FromJSON CurlCase
@@ -162,10 +178,10 @@ instance ToJSON CurlSuite
 
 -- | Simple predicate that checks if the result is passing
 isPassing :: CaseResult -> Bool
-isPassing (CasePass _) = True
+isPassing (CasePass _)   = True
 isPassing (CaseFail _ _) = False
 
 -- | Simple predicate that checks if the result is failing
 isFailing :: CaseResult -> Bool
-isFailing (CasePass _) = False
+isFailing (CasePass _)   = False
 isFailing (CaseFail _ _) = True

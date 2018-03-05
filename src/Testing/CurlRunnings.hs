@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- | curl-runnings is a framework for writing declaratively writing curl based tests for your API's.
 -- Write your test specifications with yaml or json, and you're done!
 --
@@ -5,6 +7,7 @@ module Testing.CurlRunnings
     (
       runCase
     , runSuite
+    , decodeFile
     ) where
 
 import           Control.Monad
@@ -13,10 +16,24 @@ import qualified Data.ByteString.Char8      as B8S
 import qualified Data.ByteString.Lazy       as B
 import qualified Data.HashMap.Strict        as H
 import           Data.Maybe
-import qualified Data.Text                  as T
+import qualified Data.Text as T
+import qualified Data.Yaml                  as Y
 import           Network.HTTP.Conduit
 import           Network.HTTP.Simple
 import           Testing.CurlRunnings.Types
+import           Text.Printf
+
+-- | decode a json or yaml file into a suite object
+decodeFile :: FilePath -> IO (Either String CurlSuite)
+decodeFile specPath =
+  case last $ T.splitOn "." (T.pack specPath) of
+    "json" ->
+      eitherDecode' <$> B.readFile specPath :: IO (Either String CurlSuite)
+    "yaml" ->
+      Y.decodeEither <$> B8S.readFile specPath :: IO (Either String CurlSuite)
+    "yml" ->
+      Y.decodeEither <$> B8S.readFile specPath :: IO (Either String CurlSuite)
+    _ -> return . Left $ printf "Invalid spec path %s" (T.pack specPath)
 
 -- | Run a single test case, and returns the result. IO is needed here since this method is responsible
 -- for actually curling the test case endpoint and parsing the result.
@@ -79,11 +96,10 @@ checkBody (CurlCase _ _ _ _ Nothing _) _ = Nothing
 -- | Does the json value contain all of these sub-values?
 jsonContainsAll :: Value -> [JsonSubExpr] -> Bool
 jsonContainsAll jsonValue =
-  all (\match -> case match  of
+  all $ \match -> case match  of
           ValueMatch subval -> subval `elem` traverseValue jsonValue
           KeyValueMatch key subval ->
             containsKeyVal jsonValue key subval
-      )
 
 -- | Does the json value contain the given key value pair?
 containsKeyVal :: Value -> T.Text -> Value -> Bool

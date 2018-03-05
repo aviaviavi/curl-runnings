@@ -3,12 +3,8 @@
 
 module Main where
 
-import           Data.Aeson
-import qualified Data.ByteString.Char8           as B8S
-import qualified Data.ByteString.Lazy            as B
 import qualified Data.Text                       as T
 import           Data.Version                    (showVersion)
-import qualified Data.Yaml                       as Y
 import           Paths_curl_runnings             (version)
 import           System.Console.CmdArgs
 import           System.Environment
@@ -30,22 +26,6 @@ argParser =
   summary ("curl-runnings " ++ showVersion version) &=
   program "curl-runnings" &=
   help "Use the --file or -f flag to specify an intput file spec to run"
-
--- | decode a json or yaml file into a suite object
-decodeFile :: FilePath -> IO (Either String CurlSuite)
-decodeFile specPath =
-  case last $ T.splitOn "." (T.pack specPath) of
-    "json" ->
-      eitherDecode' <$> B.readFile specPath :: IO (Either String CurlSuite)
-    "yaml" ->
-      Y.decodeEither <$> B8S.readFile specPath :: IO (Either String CurlSuite)
-    "yml" ->
-      Y.decodeEither <$> B8S.readFile specPath :: IO (Either String CurlSuite)
-    _ ->
-      return . Left $
-      printf
-        "Invalid spec path %s"
-        (T.pack specPath)
 
 main :: IO ()
 main = do

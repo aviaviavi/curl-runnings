@@ -38,62 +38,9 @@ There are few options to install:
 
 ### Writing a test specification
 
-A test spec is a top level list of test cases, each item represents a single curl and set of assertions about the response:
-
-```yaml
----
-# the top level of the file is an array of test cases
-- name: test 1 # required
-  url: http://your-endpoint.com # required
-  requestMethod: GET # required
-  # specify the json payload we expect here, if any
-  expectData: # optional
-    # `tag` refers to the type of matcher we want to use
-    # valid tags are `Exactly` | `Contains`
-    tag: Exactly
-    # check for exactly this payload
-    contents:
-      okay: true
-      msg: ''
-  expectStatus: # requried
-    # `tag` refers to the type of matcher we want to use
-    # valid tags are `ExactCode` (contents :: number) | `AnyCodeIn` (contents :: [number])
-    tag: ExactCode
-    contents: 200
-- name: test 2
-  url: http://your-endpoint.com/path
-  requestMethod: POST
-  expectStatus:
-    # Any code listed in `contents` is valid
-    tag: AnyCodeIn
-    contents:
-    - 200
-    - 201
-  # json data to send with the request
-  requestData:
-    hello: there
-    num: 1
-- name: test 3
-  url: http://your-url.com/other/path
-  requestMethod: GET
-  expectData:
-    # apply a list of matchers to the returned json payload
-    tag: Contains
-    contents:
-    # valid tags are `ValueMatch` | `KeyValueMatch`
-    # find the value `true` anywhere in the payload. This can be useful for matching against values 
-    # where you don't know the key ahead of time, or for values in a top level array.
-    - tag: ValueMatch
-      contents: true
-    # `KeyValueMatch` looks for the key/value pair anywhere in the payload
-    # here, {'okay': true} must be somewhere in the return payload
-    - tag: KeyValueMatch
-      matchKey: okay
-      matchValue: true
-  expectStatus:
-    tag: ExactCode
-    contents: 200
-```
+For now, you write your tests specs in a yaml or json file. See /examples to get
+started. A test spec is a top level array of test cases, each item represents a
+single curl and set of assertions about the response.
 
 ### Running
 
@@ -112,7 +59,9 @@ For more info:
 $ curl-runnings --help
 ```
 
-### Future work
+### Roadmap
+
+Contributions in any form are welcome and encouraged. Don't be shy! :D
 
 - [x] Json specifications for tests
 - [x] Yaml specifications for tests
@@ -123,3 +72,4 @@ $ curl-runnings --help
   - [ ] timeouts
   - [ ] retry logic
   - [ ] ability to configure alerts
+  

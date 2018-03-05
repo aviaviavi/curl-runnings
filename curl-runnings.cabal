@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d8d3fa8a875ec9e27b6db4c1ad13dcc50d7354bbbc647ae07ff08a91b0f4c79b
+-- hash: e416b6d78ede79bb4c7f1f0bc5181294266f5bf21c9cedc6f076f63372cd78cd
 
 name:           curl-runnings
 version:        0.1.0
@@ -30,13 +30,14 @@ library
   hs-source-dirs:
       src
   build-depends:
-      aeson >=1.2.4.0 && <1.3
-    , aeson-pretty >=0.8.5 && <0.9
+      aeson >=1.2.4.0
+    , aeson-pretty >=0.8.5
     , base >=4.7 && <5
-    , bytestring >=0.10.8.2 && <0.11
-    , http-conduit >=2.2.4 && <2.3
-    , text >=1.2.2.2 && <1.3
-    , unordered-containers >=0.2.8.0 && <0.3
+    , bytestring >=0.10.8.2
+    , http-conduit >=2.2.4
+    , text >=1.2.2.2
+    , unordered-containers >=0.2.8.0
+    , yaml >=0.8.28
   exposed-modules:
       Testing.CurlRunnings
       Testing.CurlRunnings.Types
@@ -51,13 +52,10 @@ executable curl-runnings
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      aeson >=1.2.4.0 && <1.3
-    , base >=4.7 && <5
-    , bytestring >=0.10.8.2 && <0.11
-    , cmdargs >=0.10.20 && <0.11
+      base >=4.7
+    , cmdargs >=0.10.20
     , curl-runnings
-    , text >=1.2.2.2 && <1.3
-    , yaml >=0.8.28 && <0.9
+    , text >=1.2.2.2
   other-modules:
       Paths_curl_runnings
   default-language: Haskell2010
@@ -71,6 +69,9 @@ test-suite curl-runnings-test
   build-depends:
       base >=4.7 && <5
     , curl-runnings
+    , directory >=1.3.0.2
+    , hspec >=2.4.4
+    , hspec-expectations >=0.8.2
   other-modules:
       Paths_curl_runnings
   default-language: Haskell2010

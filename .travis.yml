@@ -30,6 +30,7 @@ before_install:
 script: |
   version=$(grep "^version" curl-runnings.cabal | sed 's/ //g'  | cut -d ':' -f 2) &&
   echo "building binary version $version" &&
+  stack $ARGS --no-terminal --install-ghc --haddock test &&
   stack $ARGS --no-terminal --install-ghc --haddock install &&
   strip $HOME/.local/bin/curl-runnings &&
   cd $HOME/.local/bin/ &&
