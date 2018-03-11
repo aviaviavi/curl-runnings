@@ -19,19 +19,14 @@ module Testing.CurlRunnings.Types
   , StatusCodeMatcher(..)
   , AssertionFailure(..)
   , CaseResult(..)
-  , isPassing
   , isFailing
-  , fromHttpHeaders
-  , toHTTPHeaders
+  , isPassing
   ) where
-
 
 import           Data.Aeson
 import           Data.Aeson.Encode.Pretty
 import           Data.Aeson.Types
-import qualified Data.ByteString.Char8         as BS8
 import qualified Data.ByteString.Lazy.Char8    as B8
-import qualified Data.CaseInsensitive          as CI
 import           Data.Either
 import qualified Data.HashMap.Strict           as H
 import           Data.List
@@ -39,7 +34,6 @@ import           Data.Maybe
 import qualified Data.Text                     as T
 import qualified Data.Vector                   as V
 import           GHC.Generics
-import qualified Network.HTTP.Types.Header     as HTTP
 import           Testing.CurlRunnings.Internal
 import           Text.Printf
 
@@ -72,6 +66,7 @@ instance FromJSON JsonMatcher where
     | isJust $ H.lookup "contains" v = Contains <$> v .: "contains"
   parseJSON invalid = typeMismatch "JsonMatcher" invalid
 
+-- | A representation of a single header
 data Header =
   Header T.Text
          T.Text
@@ -79,36 +74,25 @@ data Header =
 
 instance ToJSON Header
 
+-- | Simple container for a list of headers, useful for a vehicle for defining a
+-- fromJSON
 data Headers =
   HeaderSet [Header]
   deriving (Show, Generic)
 
-instance Monoid Headers where
-  mempty = HeaderSet []
-  mappend (HeaderSet a) (HeaderSet b) = HeaderSet $ a ++ b
-
 instance ToJSON Headers
 
+-- | Specify a key, value, or both to match against in the returned headers of a
+-- response.
 data PartialHeaderMatcher =
   PartialHeaderMatcher (Maybe T.Text)
                        (Maybe T.Text)
   deriving (Show, Generic)
 instance ToJSON PartialHeaderMatcher
 
-fromHttpHeaders :: HTTP.ResponseHeaders -> Headers
-fromHttpHeaders rh = HeaderSet $ map fromHttpHeader rh
-
-fromHttpHeader :: HTTP.Header -> Header
-fromHttpHeader (a, b) =
-  Header (T.pack . BS8.unpack $ CI.original a) (T.pack $ BS8.unpack b)
-
-toHTTPHeader :: Header -> HTTP.Header
-toHTTPHeader (Header a b) = (CI.mk . BS8.pack $ T.unpack a, BS8.pack $ T.unpack b)
-
-toHTTPHeaders :: Headers -> HTTP.RequestHeaders
-toHTTPHeaders (HeaderSet h) = map toHTTPHeader h
-
-data HeaderMatcher = HeaderMatcher [PartialHeaderMatcher]
+-- | Collection of matchers to run against a single curl response
+data HeaderMatcher =
+  HeaderMatcher [PartialHeaderMatcher]
   deriving (Show, Generic)
 
 instance ToJSON HeaderMatcher
@@ -125,7 +109,13 @@ parseHeaders str =
       parses = map parseHeader _headers
   in case find isLeft parses of
        Just (Left failure) -> Left failure
-       _ -> Right . HeaderSet $ map (fromRight $ error "wtf") parses
+       _ ->
+         Right . HeaderSet $
+         map
+           (fromRight $
+            error
+              "Internal error parsing headers, this is a bug in curl runnings :(")
+           parses
 
 instance FromJSON Headers where
   parseJSON a@(String v) =
@@ -189,12 +179,12 @@ instance FromJSON StatusCodeMatcher where
 data CurlCase = CurlCase
   { name          :: String -- ^ The name of the test case
   , url           :: String -- ^ The target url to test
-  , requestMethod :: HttpMethod -- ^ Berb to use for the request
+  , requestMethod :: HttpMethod -- ^ Verb to use for the request
   , requestData   :: Maybe Value -- ^ Payload to send with the request, if any
-  , headers       :: Maybe Headers
+  , headers       :: Maybe Headers -- ^ Headers to send with the request, if any
   , expectData    :: Maybe JsonMatcher -- ^ The assertions to make on the response payload, if any
   , expectStatus  :: StatusCodeMatcher -- ^ Assertion about the status code returned by the target
-  , expectHeaders :: Maybe HeaderMatcher
+  , expectHeaders :: Maybe HeaderMatcher -- ^ Assertions to make about the response headers, if any
   } deriving (Show, Generic)
 
 instance FromJSON CurlCase
@@ -214,6 +204,7 @@ data AssertionFailure
   -- | The status code we got back was wrong
   | StatusFailure CurlCase
                   Int
+  -- | The headers we got back were wrong
   | HeaderFailure CurlCase
                   HeaderMatcher
                   Headers

@@ -1,12 +1,9 @@
 module Main where
 
+import           Data.Either
 import           System.Directory
 import           Test.Hspec
 import           Testing.CurlRunnings
-
-isRight :: Either a b -> Bool
-isRight (Right _) = True
-isRight _         = False
 
 main :: IO ()
 main = hspec $

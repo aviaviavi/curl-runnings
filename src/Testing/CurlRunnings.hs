@@ -14,13 +14,14 @@ import           Control.Monad
 import           Data.Aeson
 import qualified Data.ByteString.Char8      as B8S
 import qualified Data.ByteString.Lazy       as B
+import qualified Data.CaseInsensitive       as CI
 import qualified Data.HashMap.Strict        as H
 import           Data.Maybe
 import qualified Data.Text                  as T
 import qualified Data.Yaml                  as Y
-import qualified Network.HTTP.Types.Header as HTTP
 import           Network.HTTP.Conduit
 import           Network.HTTP.Simple
+import qualified Network.HTTP.Types.Header  as HTTP
 import           Testing.CurlRunnings.Types
 import           Text.Printf
 
@@ -61,13 +62,13 @@ runCase curlCase = do
           ]
   return $
     case assertionErrors of
-      [] -> CasePass curlCase
+      []       -> CasePass curlCase
       failures -> CaseFail curlCase failures
 
 checkHeaders :: CurlCase -> [HTTP.Header] -> Maybe AssertionFailure
 checkHeaders (CurlCase _ _ _ _ _ _ _ Nothing) _ = Nothing
 checkHeaders curlCase@(CurlCase _ _ _ _ _ _ _ (Just matcher@(HeaderMatcher m))) l =
-  let receivedHeaders = fromHttpHeaders l
+  let receivedHeaders = fromHTTPHeaders l
       notFound = filter (not . headerIn receivedHeaders) m
   in
     if null $ notFound then
@@ -75,10 +76,12 @@ checkHeaders curlCase@(CurlCase _ _ _ _ _ _ _ (Just matcher@(HeaderMatcher m))) 
     else
       Just $ HeaderFailure curlCase matcher receivedHeaders
 
+-- | Does this header contain our matcher?
 headerMatches :: PartialHeaderMatcher -> Header -> Bool
 headerMatches (PartialHeaderMatcher mk mv) (Header k v) =
   (maybe True (== k) mk) && (maybe True (== v) mv)
 
+-- | Does any of these headers contain our matcher?
 headerIn :: Headers -> PartialHeaderMatcher -> Bool
 headerIn (HeaderSet received) headerMatcher =
   any (headerMatches headerMatcher) received
@@ -86,7 +89,6 @@ headerIn (HeaderSet received) headerMatcher =
 safeLast :: [a] -> Maybe a
 safeLast [] = Nothing
 safeLast x  = Just $ last x
-
 
 printR :: Show a => a -> IO a
 printR x = print x >> return x
@@ -157,3 +159,20 @@ checkCode curlCase@(CurlCase _ _ _ _ _ _ (ExactCode expectedCode) _) receivedCod
 checkCode curlCase@(CurlCase _ _ _ _ _ _ (AnyCodeIn l) _) receivedCode
   | receivedCode `notElem` l = Just $ StatusFailure curlCase receivedCode
   | otherwise = Nothing
+
+-- | Utility conversion from HTTP headers to CurlRunnings headers.
+fromHTTPHeaders :: HTTP.ResponseHeaders -> Headers
+fromHTTPHeaders rh = HeaderSet $ map fromHTTPHeader rh
+
+-- | Utility conversion from an HTTP header to a CurlRunnings header.
+fromHTTPHeader :: HTTP.Header -> Header
+fromHTTPHeader (a, b) =
+  Header (T.pack . B8S.unpack $ CI.original a) (T.pack $ B8S.unpack b)
+
+-- | Utility conversion from an HTTP header to a CurlRunnings header.
+toHTTPHeader :: Header -> HTTP.Header
+toHTTPHeader (Header a b) = (CI.mk . B8S.pack $ T.unpack a, B8S.pack $ T.unpack b)
+
+-- | Utility conversion from CurlRunnings headers to HTTP headers.
+toHTTPHeaders :: Headers -> HTTP.RequestHeaders
+toHTTPHeaders (HeaderSet h) = map toHTTPHeader h

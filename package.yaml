@@ -69,6 +69,6 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - curl-runnings
+    - directory >=1.3.0.2
     - hspec >= 2.4.4
     - hspec-expectations >=0.8.2
-    - directory >=1.3.0.2
