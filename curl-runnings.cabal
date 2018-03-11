@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a9b948ca67cb9719a2d74a11d05c6c1e9a42eecfd229138554a8ea77fa6497e5
+-- hash: eede3d814ea52e96fa0d99ea5f955e191dfea8c6226a50eb1941e2c0567fa527
 
 name:           curl-runnings
 version:        0.2.0
@@ -37,15 +37,15 @@ library
     , aeson-pretty >=0.8.5
     , base >=4.7 && <5
     , bytestring >=0.10.8.2
-    , case-insensitive
+    , case-insensitive >=0.2.1
     , directory >=1.3.0.2
     , hspec >=2.4.4
     , hspec-expectations >=0.8.2
     , http-conduit >=2.2.4
-    , http-types
+    , http-types >=0.9.1
     , text >=1.2.2.2
     , unordered-containers >=0.2.8.0
-    , vector
+    , vector >=0.12.0
     , yaml >=0.8.28
   exposed-modules:
       Testing.CurlRunnings

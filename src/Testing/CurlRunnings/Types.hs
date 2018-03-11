@@ -1,6 +1,6 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
 
@@ -29,20 +29,19 @@ module Testing.CurlRunnings.Types
 import           Data.Aeson
 import           Data.Aeson.Encode.Pretty
 import           Data.Aeson.Types
+import qualified Data.ByteString.Char8         as BS8
 import qualified Data.ByteString.Lazy.Char8    as B8
-import qualified Data.ByteString.Char8    as BS8
+import qualified Data.CaseInsensitive          as CI
 import           Data.Either
 import qualified Data.HashMap.Strict           as H
 import           Data.List
-import qualified Data.CaseInsensitive as CI
 import           Data.Maybe
-import qualified Data.Vector as V
-import Data.Monoid
 import qualified Data.Text                     as T
+import qualified Data.Vector                   as V
 import           GHC.Generics
+import qualified Network.HTTP.Types.Header     as HTTP
 import           Testing.CurlRunnings.Internal
 import           Text.Printf
-import qualified Network.HTTP.Types.Header as HTTP
 
 -- | A basic enum for supported HTTP verbs
 data HttpMethod
@@ -79,8 +78,6 @@ data Header =
   deriving (Show, Generic)
 
 instance ToJSON Header
-
-type SerializedHeader = T.Text
 
 data Headers =
   HeaderSet [Header]
