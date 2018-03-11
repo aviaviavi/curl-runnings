@@ -1,26 +1,25 @@
 {-# LANGUAGE DeriveGeneric        #-}
-{-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-
 
 -- | Data types for curl-runnings tests
 
 module Testing.CurlRunnings.Types
-  ( CurlSuite(..)
+  ( AssertionFailure(..)
+  , CaseResult(..)
+  , CurlSuite(..)
   , CurlCase(..)
+  , Header(..)
+  , HeaderMatcher(..)
+  , Headers(..)
   , HttpMethod(..)
   , JsonMatcher(..)
   , JsonSubExpr(..)
-  , Header(..)
-  , Headers(..)
-  , HeaderMatcher(..)
   , PartialHeaderMatcher(..)
   , StatusCodeMatcher(..)
-  , AssertionFailure(..)
-  , CaseResult(..)
+
   , isFailing
   , isPassing
+
   ) where
 
 import           Data.Aeson
