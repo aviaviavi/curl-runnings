@@ -28,19 +28,33 @@
     "name": "test 3",
     "url": "http://your-url.com/other/path",
     "requestMethod": "GET",
-    "expectData": {
-      "contains": [
-        {
-          "keyValueMatch": {
-            "key": "okay",
-            "value": true
-          }
-        },
-        {
-          "valueMatch": true
-        }
-      ]
-    },
-    "expectStatus": 200
+    "headers": "Content-Type: application/json",
+    "expectStatus": 200,
+    "expectHeaders": "Content-Type: application/json; Hello: world"
+  },
+  {
+    "name": "test 4",
+    "url": "http://your-url.com/other/path",
+    "requestMethod": "GET",
+    "headers": "Content-Type: application/json",
+    "expectStatus": 200,
+    "expectHeaders": [
+      {
+        "key": "Key-With-Val-We-Dont-Care-About"
+      }
+    ]
+  },
+  {
+    "name": "test 5",
+    "url": "http://your-url.com/other/path",
+    "requestMethod": "GET",
+    "headers": "Content-Type: application/json",
+    "expectStatus": 200,
+    "expectHeaders": [
+      "Hello: world",
+      {
+        "value": "Value-With-Key-We-Dont-Care-About"
+      }
+    ]
   }
 ]
