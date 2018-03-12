@@ -241,7 +241,7 @@ instance Show AssertionFailure where
           (B8.unpack (encodePretty receivedVal))
   show (HeaderFailure curlCase expected receivedHeaders) =
     printf
-      "Headers from %s didn't contain expected headers. Expected headers: %s. Recieved headers: %s"
+      "Headers from %s didn't contain expected headers. Expected headers: %s. Received headers: %s"
       (url curlCase)
       (show expected)
       (show receivedHeaders)
