@@ -12,6 +12,7 @@ module Testing.CurlRunnings
 
 import           Control.Monad
 import           Data.Aeson
+import           Data.Aeson.Types
 import qualified Data.ByteString.Char8      as B8S
 import qualified Data.ByteString.Lazy       as B
 import qualified Data.CaseInsensitive       as CI
@@ -46,7 +47,7 @@ runCase curlCase = do
     httpBS .
     (setRequestHeaders
        (toHTTPHeaders $ fromMaybe (HeaderSet []) (headers curlCase))) .
-    setRequestBodyJSON (requestData curlCase) $
+    setRequestBodyJSON (fromMaybe (emptyObject) (requestData curlCase)) $
     initReq {method = B8S.pack . show $ requestMethod curlCase}
   returnVal <-
     (return . decode . B.fromStrict $ getResponseBody response) :: IO (Maybe Value)
