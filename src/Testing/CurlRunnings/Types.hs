@@ -16,6 +16,12 @@ module Testing.CurlRunnings.Types
   , JsonSubExpr(..)
   , PartialHeaderMatcher(..)
   , StatusCodeMatcher(..)
+  , QueryError(..)
+  , Index(..)
+  , Query(..)
+  , InterpolatedQuery(..)
+  , FullQueryText
+  , SingleQueryText
 
   , isFailing
   , isPassing
@@ -95,6 +101,26 @@ data HeaderMatcher =
   deriving (Show, Generic)
 
 instance ToJSON HeaderMatcher
+
+-- | Different errors relating to querying json from previous test cases
+data QueryError
+  -- | The query was malformed and couldn't be parsed
+  = QueryParseError T.Text T.Text
+  -- | The retrieved a value of the wrong type or was otherwise operating on the
+  -- wrong type of thing
+  | QueryTypeMismatch T.Text
+                      Value
+  -- | The query was parse-able
+  | QueryValidationError T.Text
+  -- | Tried to access a value in a null object
+  | NullPointer T.Text
+                T.Text
+
+instance Show QueryError where
+  show (QueryParseError t q) = printf "error parsing query %s: %s" q $ T.unpack t
+  show (NullPointer full part) = printf "null pointer in %s at %s" (T.unpack full) $ T.unpack part
+  show (QueryTypeMismatch message val) = printf "type error: %s %s" (message) $ show val
+  show (QueryValidationError message) = printf "invalid query: %s" message
 
 parseHeader :: T.Text -> Either T.Text Header
 parseHeader str =
@@ -207,6 +233,9 @@ data AssertionFailure
   | HeaderFailure CurlCase
                   HeaderMatcher
                   Headers
+  -- | Something went wrong with a test case json query
+  | QueryFailure CurlCase
+                 QueryError
   -- | Something else
   | UnexpectedFailure
 
@@ -245,18 +274,27 @@ instance Show AssertionFailure where
       (url curlCase)
       (show expected)
       (show receivedHeaders)
+  show (QueryFailure curlCase queryErr) =
+    printf
+      "JSON query error in spec %s: %s"
+      (name curlCase)
+      (show queryErr)
   show UnexpectedFailure = "Unexpected Error D:"
 
 -- | A type representing the result of a single curl, and all associated
 -- assertions
 data CaseResult
   = CasePass CurlCase
+             (Maybe Headers)
+             (Maybe Value)
   | CaseFail CurlCase
+             (Maybe Headers)
+             (Maybe Value)
              [AssertionFailure]
 
 instance Show CaseResult where
-  show (CasePass c) = makeGreen "[PASS] " ++ name c
-  show (CaseFail c failures) =
+  show (CasePass c _ _) = makeGreen "[PASS] " ++ name c
+  show (CaseFail c _ _ failures) =
     makeRed "[FAIL] " ++
     name c ++
     "\n" ++
@@ -274,10 +312,53 @@ instance ToJSON CurlSuite
 
 -- | Simple predicate that checks if the result is passing
 isPassing :: CaseResult -> Bool
-isPassing (CasePass _)   = True
-isPassing (CaseFail _ _) = False
+isPassing (CasePass _ _ _)   = True
+isPassing (CaseFail _ _ _ _ ) = False
 
 -- | Simple predicate that checks if the result is failing
 isFailing :: CaseResult -> Bool
-isFailing (CasePass _)   = False
-isFailing (CaseFail _ _) = True
+isFailing (CasePass _ _ _)   = False
+isFailing (CaseFail _ _ _ _) = True
+
+-- | A single lookup operation in a json query
+data Index
+  -- | Drill into the json of a specific test case. The SUITE object is
+  -- accessible as an array of values that have come back from previous test
+  -- cases
+  = CaseResultIndex Integer
+  -- | A standard json key lookup.
+  | KeyIndex T.Text
+  -- | A standard json array index lookup.
+  | ArrayIndex Integer
+
+instance Show Index where
+  show (CaseResultIndex t) = "SUITE[" ++ show t ++ "]"
+  show (KeyIndex key)      = "." ++ T.unpack key
+  show (ArrayIndex i)      = printf "[%d]" i
+
+-- | A single entity to be queries from a json value
+data Query =
+  -- | A single query contains a list of discrete index operations
+  Query [Index]
+  deriving (Show)
+
+-- | A distinct parsed unit in a query
+data InterpolatedQuery
+  -- | Regular text, no query
+  = LiteralText T.Text
+  -- | Some leading text, then a query
+  | InterpolatedQuery T.Text
+                      Query
+  -- | Just a query, no leading text
+  | NonInterpolatedQuery Query
+  deriving (Show)
+
+printQueryString :: InterpolatedQuery -> String
+printQueryString (LiteralText t) = show t
+printQueryString (InterpolatedQuery raw (Query indexes)) = printf "%s$<%s>" raw (concat $ map show indexes)
+printQueryString (NonInterpolatedQuery (Query indexes)) = printf "$<%s>" (concat $ map show indexes)
+
+-- | The full string in which a query appears, eg "prefix-${{SUITE[0].key.another_key[0].last_key}}"
+type FullQueryText = T.Text
+-- | The string for one query given the FullQueryText above, the single query text would be SUITE[0].key.another_key[0].last_key
+type SingleQueryText = T.Text

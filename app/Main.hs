@@ -27,14 +27,11 @@ argParser =
   program "curl-runnings" &=
   help "Use the --file or -f flag to specify an intput file spec to run"
 
-main :: IO ()
-main = do
-  mainArgs <- cmdArgs argParser
-  case file mainArgs of
-    "" ->
-      putStrLn
-        "Please specify an input file with the --file (-f) flag or use --help for more information"
-    path -> do
+runFile :: FilePath -> IO ()
+funFile "" =
+  putStrLn
+    "Please specify an input file with the --file (-f) flag or use --help for more information"
+runFile path = do
       home <- getEnv "HOME"
       suite <- decodeFile . T.unpack $ T.replace "~" (T.pack home) (T.pack path)
       case suite of
@@ -45,3 +42,6 @@ main = do
                  exitWith (ExitFailure 1)
             else putStrLn $ makeGreen "All tests passed!"
         Left messgage -> putStrLn $ "Couldn't read input json or yaml file: " ++ messgage
+
+main :: IO ()
+main = cmdArgs argParser >>= runFile . file

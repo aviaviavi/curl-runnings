@@ -3,10 +3,21 @@
 module Testing.CurlRunnings.Internal
   ( makeRed
   , makeGreen
+  , tracer
+  , mapRight
   ) where
+
+import Debug.Trace
 
 makeGreen :: String -> String
 makeGreen s = "\x1B[32m" ++ s ++ "\x1B[0m"
 
 makeRed :: String -> String
 makeRed s = "\x1B[31m" ++ s ++ "\x1B[0m"
+
+tracer :: Show a => String -> a -> a
+tracer a b = trace (a ++ ": " ++ show b) b
+
+mapRight :: (b -> c) -> Either a b -> Either a c
+mapRight f (Right v) = Right $ f v
+mapRight _ (Left v)  = Left v

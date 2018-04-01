@@ -2,10 +2,10 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d332c7a791f625223c40a000c154539fd654b29190ff31c7909569c212cfa8b4
+-- hash: 07e418709bb03e179ff14475447ebbb9441ef5ea0a62a6e3db90576b2625242a
 
 name:           curl-runnings
-version:        0.3.1
+version:        0.4.0
 synopsis:       A framework for declaratively writing curl based API tests
 description:    Please see the README on Github at <https://github.com/aviaviavi/curl-runnings#readme>
 category:       Testing
@@ -22,6 +22,7 @@ cabal-version:  >= 1.10
 extra-source-files:
     examples/example-spec.json
     examples/example-spec.yaml
+    examples/interpolation-spec.yaml
     examples/test.json
     README.md
 
@@ -43,6 +44,7 @@ library
     , hspec-expectations >=0.8.2
     , http-conduit >=2.2.4
     , http-types >=0.9.1
+    , megaparsec >=6.3.0
     , text >=1.2.2.2
     , unordered-containers >=0.2.8.0
     , vector >=0.12.0
@@ -51,6 +53,7 @@ library
       Testing.CurlRunnings
       Testing.CurlRunnings.Types
       Testing.CurlRunnings.Internal
+      Testing.CurlRunnings.Internal.Parser
   other-modules:
       Paths_curl_runnings
   default-language: Haskell2010
