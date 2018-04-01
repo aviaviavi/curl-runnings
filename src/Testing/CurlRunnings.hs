@@ -211,6 +211,7 @@ runReplacements previousResults (String s) =
   case parseQuery s of
     Right [LiteralText t] -> Right $ String t
     Right [q@(InterpolatedQuery _ _)] -> getValueForQuery previousResults q
+    Right [q@(NonInterpolatedQuery _)] -> getValueForQuery previousResults q
     Right _ -> mapRight String $ interpolateQueryString previousResults s
     Left parseErr -> Left parseErr
 runReplacements _ valToUpdate = Right valToUpdate
