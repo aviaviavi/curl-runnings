@@ -41,7 +41,7 @@ parseQuery q =
   let trimmed = T.strip q
   in case Text.Megaparsec.parse parseFullTextWithQuery "" trimmed of
        Right a -> Right a
-       Left a  -> Left $ QueryParseError $ T.pack $ parseErrorPretty a
+       Left a  -> Left $ QueryParseError (T.pack $ parseErrorPretty a) q
 
 type Parser = Parsec Void T.Text
 

@@ -105,7 +105,7 @@ instance ToJSON HeaderMatcher
 -- | Different errors relating to querying json from previous test cases
 data QueryError
   -- | The query was malformed and couldn't be parsed
-  = QueryParseError T.Text
+  = QueryParseError T.Text T.Text
   -- | The retrieved a value of the wrong type or was otherwise operating on the
   -- wrong type of thing
   | QueryTypeMismatch T.Text
@@ -117,7 +117,7 @@ data QueryError
                 T.Text
 
 instance Show QueryError where
-  show (QueryParseError t) = printf "error parsing query: %s" $ T.unpack t
+  show (QueryParseError t q) = printf "error parsing query %s: %s" q $ T.unpack t
   show (NullPointer full part) = printf "null pointer in %s at %s" (T.unpack full) $ T.unpack part
   show (QueryTypeMismatch message val) = printf "type error: %s %s" (message) $ show val
   show (QueryValidationError message) = printf "invalid query: %s" message
@@ -351,11 +351,12 @@ data InterpolatedQuery
                       Query
   -- | Just a query, no leading text
   | NonInterpolatedQuery Query
+  deriving (Show)
 
-instance Show InterpolatedQuery where
-  show (LiteralText t) = show t
-  show (InterpolatedQuery raw (Query indexes)) = printf "%s$<%s>" raw (concat $ map show indexes)
-  show (NonInterpolatedQuery (Query indexes)) = printf "$<%s>" (concat $ map show indexes)
+printQueryString :: InterpolatedQuery -> String
+printQueryString (LiteralText t) = show t
+printQueryString (InterpolatedQuery raw (Query indexes)) = printf "%s$<%s>" raw (concat $ map show indexes)
+printQueryString (NonInterpolatedQuery (Query indexes)) = printf "$<%s>" (concat $ map show indexes)
 
 -- | The full string in which a query appears, eg "prefix-${{SUITE[0].key.another_key[0].last_key}}"
 type FullQueryText = T.Text

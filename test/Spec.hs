@@ -17,6 +17,11 @@ main = hspec $
   it "should provide valid example json specs" $
     testValidSpec "/examples/example-spec.json"
 
+  -- note that this doesn't actually try to parse the interpolations themselves,
+  -- but that would be useful thing to add here
+  it "should provid a valid interpolation spec" $
+    testValidSpec "/examples/interpolation-spec.yaml"
+
   it "should parse valid queries" $ do
     parseQuery "just some text" `shouldSatisfy` isRight
     parseQuery "$<SUITE[0].key.key>" `shouldSatisfy` isRight

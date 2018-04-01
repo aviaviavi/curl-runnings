@@ -233,6 +233,8 @@ interpolateQueryString pastResults query =
 -- | Lookup the text at the specified query
 getStringValueForQuery :: [CaseResult] -> InterpolatedQuery -> Either QueryError T.Text
 getStringValueForQuery _ (LiteralText rawText) = Right rawText
+getStringValueForQuery previousResults (NonInterpolatedQuery q) =
+  getStringValueForQuery previousResults $ InterpolatedQuery "" q
 getStringValueForQuery previousResults i@(InterpolatedQuery rawText _) =
   case getValueForQuery previousResults i of
     Left l           -> Left l
@@ -242,7 +244,7 @@ getStringValueForQuery previousResults i@(InterpolatedQuery rawText _) =
 -- | Lookup the value for the specified query
 getValueForQuery :: [CaseResult] -> InterpolatedQuery -> Either QueryError Value
 getValueForQuery _ (LiteralText rawText) = Right $ String rawText
-getValueForQuery results full@(InterpolatedQuery "" (Query indexes)) =
+getValueForQuery results full@(NonInterpolatedQuery (Query indexes)) =
   case head indexes of
     (CaseResultIndex i) ->
       let (CasePass _ _ returnedJSON) = results !! fromInteger i
@@ -270,8 +272,9 @@ getValueForQuery results full@(InterpolatedQuery "" (Query indexes)) =
       Left . QueryValidationError $
       T.pack $ "$<> queries must start with a SUITE[index] query: " ++ show full
 getValueForQuery results (InterpolatedQuery _ q@(Query _)) =
-  case getValueForQuery results (InterpolatedQuery "" q) of
+  case getValueForQuery results (NonInterpolatedQuery q) of
     Right (String s) -> Right . String $ s
+    Right Null -> Right Null
     Right v -> Left $ QueryTypeMismatch (T.pack "Expected a string") v
     Left l -> Left l
 
