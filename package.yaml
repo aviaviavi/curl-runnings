@@ -1,5 +1,5 @@
 name:                curl-runnings
-version:             0.3.1
+version:             0.4.0
 github:              aviaviavi/curl-runnings
 license:             MIT
 author:              Avi Press
@@ -30,6 +30,7 @@ library:
   - Testing.CurlRunnings
   - Testing.CurlRunnings.Types
   - Testing.CurlRunnings.Internal
+  - Testing.CurlRunnings.Internal.Parser
   dependencies:
   - aeson >=1.2.4.0
   - aeson-pretty >=0.8.5
@@ -40,6 +41,7 @@ library:
   - hspec-expectations >=0.8.2
   - http-conduit >=2.2.4
   - http-types >=0.9.1
+  - megaparsec >=6.3.0
   - text >=1.2.2.2
   - unordered-containers >=0.2.8.0
   - vector >=0.12.0

@@ -16,6 +16,12 @@ module Testing.CurlRunnings.Types
   , JsonSubExpr(..)
   , PartialHeaderMatcher(..)
   , StatusCodeMatcher(..)
+  , QueryError(..)
+  , Index(..)
+  , Query(..)
+  , InterpolatedQuery(..)
+  , FullQueryText
+  , SingleQueryText
 
   , isFailing
   , isPassing
@@ -95,6 +101,20 @@ data HeaderMatcher =
   deriving (Show, Generic)
 
 instance ToJSON HeaderMatcher
+
+data QueryError
+  = QueryParseError T.Text
+  | QueryTypeMismatch T.Text
+                      Value
+  | QueryValidationError T.Text
+  | NullPointer T.Text
+                T.Text
+
+instance Show QueryError where
+  show (QueryParseError t) = printf "error parsing query: %s" $ T.unpack t
+  show (NullPointer full part) = printf "null pointer in %s at %s" (T.unpack full) $ T.unpack part
+  show (QueryTypeMismatch message val) = printf "type error: %s %s" (message) $ show val
+  show (QueryValidationError message) = printf "invalid query: %s" message
 
 parseHeader :: T.Text -> Either T.Text Header
 parseHeader str =
@@ -207,6 +227,8 @@ data AssertionFailure
   | HeaderFailure CurlCase
                   HeaderMatcher
                   Headers
+  | QueryFailure CurlCase
+                 QueryError
   -- | Something else
   | UnexpectedFailure
 
@@ -245,18 +267,27 @@ instance Show AssertionFailure where
       (url curlCase)
       (show expected)
       (show receivedHeaders)
+  show (QueryFailure curlCase queryErr) =
+    printf
+      "JSON query error in spec %s: %s"
+      (name curlCase)
+      (show queryErr)
   show UnexpectedFailure = "Unexpected Error D:"
 
 -- | A type representing the result of a single curl, and all associated
 -- assertions
 data CaseResult
   = CasePass CurlCase
+             (Maybe Headers)
+             (Maybe Value)
   | CaseFail CurlCase
+             (Maybe Headers)
+             (Maybe Value)
              [AssertionFailure]
 
 instance Show CaseResult where
-  show (CasePass c) = makeGreen "[PASS] " ++ name c
-  show (CaseFail c failures) =
+  show (CasePass c _ _) = makeGreen "[PASS] " ++ name c
+  show (CaseFail c _ _ failures) =
     makeRed "[FAIL] " ++
     name c ++
     "\n" ++
@@ -274,10 +305,40 @@ instance ToJSON CurlSuite
 
 -- | Simple predicate that checks if the result is passing
 isPassing :: CaseResult -> Bool
-isPassing (CasePass _)   = True
-isPassing (CaseFail _ _) = False
+isPassing (CasePass _ _ _)   = True
+isPassing (CaseFail _ _ _ _ ) = False
 
 -- | Simple predicate that checks if the result is failing
 isFailing :: CaseResult -> Bool
-isFailing (CasePass _)   = False
-isFailing (CaseFail _ _) = True
+isFailing (CasePass _ _ _)   = False
+isFailing (CaseFail _ _ _ _) = True
+
+data Index
+  = CaseResultIndex Integer
+  | KeyIndex T.Text
+  | ArrayIndex Integer
+
+instance Show Index where
+  show (CaseResultIndex t) = "SUITE[" ++ show t ++ "]"
+  show (KeyIndex key)      = "." ++ T.unpack key
+  show (ArrayIndex i)      = printf "[%d]" i
+
+data Query =
+  Query [Index]
+  deriving (Show)
+
+data InterpolatedQuery
+  = LiteralText T.Text
+  | InterpolatedQuery T.Text
+                      Query
+  | NonInterpolatedQuery Query
+
+instance Show InterpolatedQuery where
+  show (LiteralText t) = show t
+  show (InterpolatedQuery raw (Query indexes)) = printf "%s$<%s>" raw (concat $ map show indexes)
+  show (NonInterpolatedQuery (Query indexes)) = printf "$<%s>" (concat $ map show indexes)
+
+-- | The full string in which a query appears, eg "prefix-${{SUITE[0].key.another_key[0].last_key}}"
+type FullQueryText = T.Text
+-- | The string for one query given the FullQueryText above, the single query text would be SUITE[0].key.another_key[0].last_key
+type SingleQueryText = T.Text

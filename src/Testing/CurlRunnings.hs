@@ -1,4 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | curl-runnings is a framework for writing declaratively writing curl based tests for your API's.
 -- Write your test specifications with yaml or json, and you're done!
@@ -12,17 +13,23 @@ module Testing.CurlRunnings
 
 import           Control.Monad
 import           Data.Aeson
+import qualified Data.ByteString.Char8                as B8S
+import qualified Data.ByteString.Lazy                 as B
+import qualified Data.CaseInsensitive                 as CI
+import           Data.Either
+import qualified Data.HashMap.Strict                  as H
+import           Data.List
 import           Data.Aeson.Types
-import qualified Data.ByteString.Char8      as B8S
-import qualified Data.ByteString.Lazy       as B
-import qualified Data.CaseInsensitive       as CI
-import qualified Data.HashMap.Strict        as H
 import           Data.Maybe
-import qualified Data.Text                  as T
-import qualified Data.Yaml                  as Y
+import           Data.Monoid
+import qualified Data.Text                            as T
+import qualified Data.Vector                          as V
+import qualified Data.Yaml                            as Y
 import           Network.HTTP.Conduit
 import           Network.HTTP.Simple
-import qualified Network.HTTP.Types.Header  as HTTP
+import qualified Network.HTTP.Types.Header            as HTTP
+import           Testing.CurlRunnings.Internal
+import           Testing.CurlRunnings.Internal.Parser
 import           Testing.CurlRunnings.Types
 import           Text.Printf
 
@@ -40,47 +47,44 @@ decodeFile specPath =
 
 -- | Run a single test case, and returns the result. IO is needed here since this method is responsible
 -- for actually curling the test case endpoint and parsing the result.
-runCase :: CurlCase -> IO CaseResult
-runCase curlCase = do
+runCase :: [CaseResult] -> CurlCase -> IO CaseResult
+runCase previousResults curlCase = do
   initReq <- parseRequest $ url curlCase
   response <-
     httpBS .
-    (setRequestHeaders
-       (toHTTPHeaders $ fromMaybe (HeaderSet []) (headers curlCase))) .
+    setRequestHeaders
+       (toHTTPHeaders $ fromMaybe (HeaderSet []) (headers curlCase)) .
     setRequestBodyJSON (fromMaybe (emptyObject) (requestData curlCase)) $
     initReq {method = B8S.pack . show $ requestMethod curlCase}
   returnVal <-
     (return . decode . B.fromStrict $ getResponseBody response) :: IO (Maybe Value)
   let returnCode = getResponseStatusCode response
-      receivedHeaders = responseHeaders response
+      receivedHeaders = fromHTTPHeaders $ responseHeaders response
       assertionErrors =
         map fromJust $
         filter
           isJust
-          [ checkBody curlCase returnVal
+          [ checkBody previousResults curlCase returnVal
           , checkCode curlCase returnCode
           , checkHeaders curlCase receivedHeaders
           ]
   return $
     case assertionErrors of
-      []       -> CasePass curlCase
-      failures -> CaseFail curlCase failures
+      []       -> CasePass curlCase (Just receivedHeaders) returnVal
+      failures -> CaseFail curlCase (Just receivedHeaders) returnVal failures
 
-checkHeaders :: CurlCase -> [HTTP.Header] -> Maybe AssertionFailure
+checkHeaders :: CurlCase -> Headers  -> Maybe AssertionFailure
 checkHeaders (CurlCase _ _ _ _ _ _ _ Nothing) _ = Nothing
-checkHeaders curlCase@(CurlCase _ _ _ _ _ _ _ (Just matcher@(HeaderMatcher m))) l =
-  let receivedHeaders = fromHTTPHeaders l
-      notFound = filter (not . headerIn receivedHeaders) m
-  in
-    if null $ notFound then
-      Nothing
-    else
-      Just $ HeaderFailure curlCase matcher receivedHeaders
+checkHeaders curlCase@(CurlCase _ _ _ _ _ _ _ (Just matcher@(HeaderMatcher m))) receivedHeaders =
+  let notFound = filter (not . headerIn receivedHeaders) m
+  in if null notFound
+       then Nothing
+       else Just $ HeaderFailure curlCase matcher receivedHeaders
 
 -- | Does this header contain our matcher?
 headerMatches :: PartialHeaderMatcher -> Header -> Bool
 headerMatches (PartialHeaderMatcher mk mv) (Header k v) =
-  (maybe True (== k) mk) && (maybe True (== v) mv)
+  maybe True (== k) mk && maybe True (== v) mv
 
 -- | Does any of these headers contain our matcher?
 headerIn :: Headers -> PartialHeaderMatcher -> Bool
@@ -100,39 +104,185 @@ runSuite (CurlSuite cases) =
   foldM
     (\prevResults curlCase ->
        case safeLast prevResults of
-         Just (CaseFail _ _) -> return prevResults
-         Just (CasePass _) -> do
-           result <- runCase curlCase >>= printR
+         Just CaseFail {} -> return prevResults
+         Just CasePass {} -> do
+           result <- runCase prevResults curlCase >>= printR
            return $ prevResults ++ [result]
          Nothing -> do
-           result <- runCase curlCase >>= printR
+           result <- runCase prevResults curlCase >>= printR
            return [result])
     []
     cases
 
 -- | Check if the retrieved value fail's the case's assertion
-checkBody :: CurlCase -> Maybe Value -> Maybe AssertionFailure
+checkBody :: [CaseResult] -> CurlCase -> Maybe Value -> Maybe AssertionFailure
 -- | We are looking for an exact payload match, and we have a payload to check
-checkBody curlCase@(CurlCase _ _ _ _ _ (Just matcher@(Exactly expectedValue)) _ _) (Just receivedBody)
-  | expectedValue /= receivedBody =
-    Just $ DataFailure curlCase matcher (Just receivedBody)
-  | otherwise = Nothing
+checkBody previousResults curlCase@(CurlCase _ _ _ _ _ (Just matcher@(Exactly expectedValue)) _ _) (Just receivedBody) =
+  case runReplacements previousResults expectedValue of
+    (Left err) -> Just $ QueryFailure curlCase err
+    (Right interpolated) ->
+      if interpolated /= receivedBody
+        then Just $
+             DataFailure
+               (curlCase {expectData = Just $ Exactly interpolated})
+               (Exactly interpolated)
+               (Just receivedBody)
+        else Nothing
+
 -- | We are checking a list of expected subvalues, and we have a payload to check
-checkBody curlCase@(CurlCase _ _ _ _ _ (Just matcher@(Contains expectedSubvalues)) _ _) (Just receivedBody)
-  | jsonContainsAll receivedBody expectedSubvalues = Nothing
-  | otherwise = Just $ DataFailure curlCase matcher (Just receivedBody)
+checkBody previousResults curlCase@(CurlCase _ _ _ _ _ (Just (Contains subexprs)) _ _) (Just receivedBody) =
+ case runReplacementsOnSubvalues previousResults subexprs of
+   Left f -> Just $ QueryFailure curlCase f
+   Right updatedMatcher ->
+    if jsonContainsAll receivedBody updatedMatcher
+      then Nothing
+      else Just $ DataFailure curlCase (Contains updatedMatcher) (Just receivedBody)
+
 -- | We expected a body but didn't get one
-checkBody curlCase@(CurlCase _ _ _ _ _ (Just anything) _ _) Nothing = Just $ DataFailure curlCase anything Nothing
+checkBody _ curlCase@(CurlCase _ _ _ _ _ (Just anything) _ _) Nothing =
+  Just $ DataFailure curlCase anything Nothing
+
 -- | No assertions on the body
-checkBody (CurlCase _ _ _ _ _ Nothing _ _) _ = Nothing
+checkBody _ (CurlCase _ _ _ _ _ Nothing _ _) _ = Nothing
+
+runReplacementsOnSubvalues :: [CaseResult] -> [JsonSubExpr] -> Either QueryError [JsonSubExpr]
+runReplacementsOnSubvalues previousResults subexprs =
+  let replacementResults :: [Either QueryError JsonSubExpr] =
+        map
+          (\expr ->
+             case expr of
+               ValueMatch v ->
+                 case runReplacements previousResults v of
+                   Left l -> Left l
+                   Right newVal -> Right $ ValueMatch newVal
+               KeyValueMatch k v ->
+                 case ( interpolateQueryString previousResults k
+                      , runReplacements previousResults v) of
+                   (Left l, _) -> Left l
+                   (_, Left l) -> Left l
+                   (Right k', Right v') ->
+                     Right KeyValueMatch {matchKey = k', matchValue = v'})
+          subexprs
+  in case find isLeft replacementResults of
+       Just (Left err) -> Left err
+       Nothing -> Right $ map (fromRight (error "asdf")) replacementResults
+
+-- | runReplacements
+runReplacements :: [CaseResult] -> Value -> Either QueryError Value
+runReplacements previousResults (Object o) =
+  let keys = H.keys o
+      keysWithUpdatedKeyVal =
+        map
+          (\key ->
+             let value = fromJust $ H.lookup key o
+              -- (old key, new key, new value)
+             in ( key
+                , interpolateQueryString previousResults key
+                , runReplacements previousResults value))
+          keys
+  in mapRight Object $
+     foldr
+       (\((key, eKeyResult, eValueResult) :: ( T.Text
+                                             , Either QueryError T.Text
+                                             , Either QueryError Value)) (eObjectToUpdate :: Either QueryError Object) ->
+          case (eKeyResult, eValueResult, eObjectToUpdate)
+            -- TODO well at least it looks nice
+                of
+            (Left queryErr, _, _) -> Left queryErr
+            (_, Left queryErr, _) -> Left queryErr
+            (_, _, Left queryErr) -> Left queryErr
+            (Right newKey, Right newValue, Right objectToUpdate) ->
+              if key /= newKey
+                then let inserted = H.insert newKey newValue objectToUpdate
+                         deleted = H.delete key inserted
+                     in Right deleted
+                else Right $ H.insert key newValue objectToUpdate)
+       (Right o)
+       keysWithUpdatedKeyVal
+runReplacements p (Array a) =
+  let results = V.map (runReplacements p) a
+  in case find isLeft results of
+       Just l -> l
+       Nothing ->
+         Right . Array $ V.map (fromRight (error "shouldn't happen")) results
+-- special case, i can't figure out how to get the parser to parse empty strings :'(
+runReplacements _ s@(String "") = Right s
+runReplacements previousResults (String s) =
+  case parseQuery s of
+    Right [LiteralText t] -> Right $ String t
+    Right [q@(InterpolatedQuery _ _)] -> getValueForQuery previousResults q
+    Right _ -> mapRight String $ interpolateQueryString previousResults s
+    Left parseErr -> Left parseErr
+runReplacements _ valToUpdate = Right valToUpdate
+
+-- | Given a query string, return some text with interpolated values. Type
+-- errors will be returned if queries don't resolve to strings
+interpolateQueryString :: [CaseResult] -> FullQueryText -> Either QueryError T.Text
+interpolateQueryString pastResults query =
+  let parsedQuery = parseQuery query
+  in case parsedQuery of
+       (Left err) -> Left err
+       (Right interpolatedQ) ->
+         let lookups :: [Either QueryError T.Text] =
+               map (getStringValueForQuery pastResults) interpolatedQ
+             failure = find isLeft lookups
+             goodLookups :: [T.Text] =
+               Prelude.map (fromRight (T.pack "error")) lookups
+         in fromMaybe (Right $ foldr (<>) (T.pack "") goodLookups) failure
+
+-- | Lookup the text at the specified query
+getStringValueForQuery :: [CaseResult] -> InterpolatedQuery -> Either QueryError T.Text
+getStringValueForQuery _ (LiteralText rawText) = Right rawText
+getStringValueForQuery previousResults i@(InterpolatedQuery rawText _) =
+  case getValueForQuery previousResults i of
+    Left l -> Left l
+    Right (String s) -> Right $ rawText <> s
+    (Right o) -> Left $ QueryTypeMismatch "Expected a string" o
+
+-- | Lookup the value for the specified query
+getValueForQuery :: [CaseResult] -> InterpolatedQuery -> Either QueryError Value
+getValueForQuery _ (LiteralText rawText) = Right $ String rawText
+getValueForQuery results full@(InterpolatedQuery "" (Query indexes)) =
+  case head indexes of
+    (CaseResultIndex i) ->
+      let (CasePass _ _ returnedJSON) = results !! fromInteger i
+          jsonToIndex =
+            case returnedJSON of
+              Just v -> Right v
+              Nothing ->
+                Left $
+                NullPointer
+                  (T.pack $ show full)
+                  "No data was returned from this case"
+      in foldr
+           (\index eitherVal ->
+              case (eitherVal, index) of
+                (Left l, _) -> Left l
+                (Right (Object o), KeyIndex k) ->
+                  Right $ H.lookupDefault Null k o
+                (Right (Array a), ArrayIndex i') -> Right $ a V.! fromInteger i'
+                (Right Null, q) ->
+                  Left $ NullPointer (T.pack $ show full) (T.pack $ show q)
+                (Right o, _) -> Left $ QueryTypeMismatch (T.pack $ show index) o)
+           jsonToIndex
+           (tail indexes)
+    _ ->
+      Left . QueryValidationError $
+      T.pack $ "$<> queries must start with a SUITE[index] query: " ++ show full
+getValueForQuery results (InterpolatedQuery _ q@(Query _)) =
+  case getValueForQuery results (InterpolatedQuery "" q) of
+    Right (String s) -> Right . String $ s
+    Right v -> Left $ QueryTypeMismatch (T.pack "Expected a string") v
+    Left l -> Left l
 
 -- | Does the json value contain all of these sub-values?
 jsonContainsAll :: Value -> [JsonSubExpr] -> Bool
 jsonContainsAll jsonValue =
-  all $ \match -> case match  of
-          ValueMatch subval -> subval `elem` traverseValue jsonValue
-          KeyValueMatch key subval ->
-            containsKeyVal jsonValue key subval
+  all $ \match ->
+    case match of
+      ValueMatch subval -> subval `elem` traverseValue jsonValue
+      KeyValueMatch key subval ->
+        any (\o -> containsKeyVal o key subval) (traverseValue jsonValue)
 
 -- | Does the json value contain the given key value pair?
 containsKeyVal :: Value -> T.Text -> Value -> Bool
