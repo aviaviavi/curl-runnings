@@ -7,15 +7,18 @@
 -- the `SUITE` keyword references the results of previous test cases. Here, the
 -- whole string is a query, so if the value referenced by this query is itself a
 -- json value, the entire value will replace this string in a json matcher.
--- Additionally, interpolation of the form "some text to interpolate with
--- $<SUITE[0].key.key>" will substitute a string found at the specified query
+-- Additionally, interpolation of the form:
+-- @
+-- "some text to interpolate with $<SUITE[0].key.key>"
+-- @
+-- will substitute a string found at the specified query
 -- and subsitute the string.
 --
 -- Rules for the language are similar to JQ or regular JSON indexing rules. All
 -- queries must start with a SUITE[integer] index, and be written between a
---
--- `$< ... >`
---
+-- @
+--  `$< ... >`
+-- @
 -- to signify an interpolation. You can have mutliple queries inside a
 -- single string, but if interpolation is occuring, then the query specified
 -- must resolve to a string value. Otheriwse, a type error will be thrown.

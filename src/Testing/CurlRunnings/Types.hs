@@ -102,11 +102,17 @@ data HeaderMatcher =
 
 instance ToJSON HeaderMatcher
 
+-- | Different errors relating to querying json from previous test cases
 data QueryError
+  -- | The query was malformed and couldn't be parsed
   = QueryParseError T.Text
+  -- | The retrieved a value of the wrong type or was otherwise operating on the
+  -- wrong type of thing
   | QueryTypeMismatch T.Text
                       Value
+  -- | The query was parse-able
   | QueryValidationError T.Text
+  -- | Tried to access a value in a null object
   | NullPointer T.Text
                 T.Text
 
@@ -227,6 +233,7 @@ data AssertionFailure
   | HeaderFailure CurlCase
                   HeaderMatcher
                   Headers
+  -- | Something went wrong with a test case json query
   | QueryFailure CurlCase
                  QueryError
   -- | Something else
@@ -313,9 +320,15 @@ isFailing :: CaseResult -> Bool
 isFailing (CasePass _ _ _)   = False
 isFailing (CaseFail _ _ _ _) = True
 
+-- | A single lookup operation in a json query
 data Index
+  -- | Drill into the json of a specific test case. The SUITE object is
+  -- accessible as an array of values that have come back from previous test
+  -- cases
   = CaseResultIndex Integer
+  -- | A standard json key lookup.
   | KeyIndex T.Text
+  -- | A standard json array index lookup.
   | ArrayIndex Integer
 
 instance Show Index where
@@ -323,14 +336,20 @@ instance Show Index where
   show (KeyIndex key)      = "." ++ T.unpack key
   show (ArrayIndex i)      = printf "[%d]" i
 
+-- | A single entity to be queries from a json value
 data Query =
+  -- | A single query contains a list of discrete index operations
   Query [Index]
   deriving (Show)
 
+-- | A distinct parsed unit in a query
 data InterpolatedQuery
+  -- | Regular text, no query
   = LiteralText T.Text
+  -- | Some leading text, then a query
   | InterpolatedQuery T.Text
                       Query
+  -- | Just a query, no leading text
   | NonInterpolatedQuery Query
 
 instance Show InterpolatedQuery where
