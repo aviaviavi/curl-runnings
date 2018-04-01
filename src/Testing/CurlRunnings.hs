@@ -13,13 +13,13 @@ module Testing.CurlRunnings
 
 import           Control.Monad
 import           Data.Aeson
+import           Data.Aeson.Types
 import qualified Data.ByteString.Char8                as B8S
 import qualified Data.ByteString.Lazy                 as B
 import qualified Data.CaseInsensitive                 as CI
 import           Data.Either
 import qualified Data.HashMap.Strict                  as H
 import           Data.List
-import           Data.Aeson.Types
 import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text                            as T
@@ -117,7 +117,7 @@ runSuite (CurlSuite cases) =
 -- | Check if the retrieved value fail's the case's assertion
 checkBody :: [CaseResult] -> CurlCase -> Maybe Value -> Maybe AssertionFailure
 -- | We are looking for an exact payload match, and we have a payload to check
-checkBody previousResults curlCase@(CurlCase _ _ _ _ _ (Just matcher@(Exactly expectedValue)) _ _) (Just receivedBody) =
+checkBody previousResults curlCase@(CurlCase _ _ _ _ _ (Just (Exactly expectedValue)) _ _) (Just receivedBody) =
   case runReplacements previousResults expectedValue of
     (Left err) -> Just $ QueryFailure curlCase err
     (Right interpolated) ->
@@ -153,7 +153,7 @@ runReplacementsOnSubvalues previousResults subexprs =
              case expr of
                ValueMatch v ->
                  case runReplacements previousResults v of
-                   Left l -> Left l
+                   Left l       -> Left l
                    Right newVal -> Right $ ValueMatch newVal
                KeyValueMatch k v ->
                  case ( interpolateQueryString previousResults k
@@ -235,9 +235,9 @@ getStringValueForQuery :: [CaseResult] -> InterpolatedQuery -> Either QueryError
 getStringValueForQuery _ (LiteralText rawText) = Right rawText
 getStringValueForQuery previousResults i@(InterpolatedQuery rawText _) =
   case getValueForQuery previousResults i of
-    Left l -> Left l
+    Left l           -> Left l
     Right (String s) -> Right $ rawText <> s
-    (Right o) -> Left $ QueryTypeMismatch "Expected a string" o
+    (Right o)        -> Left $ QueryTypeMismatch "Expected a string" o
 
 -- | Lookup the value for the specified query
 getValueForQuery :: [CaseResult] -> InterpolatedQuery -> Either QueryError Value
