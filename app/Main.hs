@@ -28,7 +28,7 @@ argParser =
   help "Use the --file or -f flag to specify an intput file spec to run"
 
 runFile :: FilePath -> IO ()
-funFile "" =
+runFile "" =
   putStrLn
     "Please specify an input file with the --file (-f) flag or use --help for more information"
 runFile path = do
@@ -41,7 +41,7 @@ runFile path = do
             then putStrLn (makeRed "Some tests failed") >>
                  exitWith (ExitFailure 1)
             else putStrLn $ makeGreen "All tests passed!"
-        Left messgage -> putStrLn $ "Couldn't read input json or yaml file: " ++ messgage
+        Left messgage -> putStrLn . makeRed $ "Couldn't read input json or yaml file: " ++ messgage
 
 main :: IO ()
 main = cmdArgs argParser >>= runFile . file
