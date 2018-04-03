@@ -12,7 +12,6 @@ import           System.Exit
 import           Testing.CurlRunnings
 import           Testing.CurlRunnings.Internal
 import           Testing.CurlRunnings.Types
-import           Text.Printf
 
 -- | Command line flags
 data CurlRunnings = CurlRunnings
