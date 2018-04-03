@@ -32,18 +32,21 @@ import           Testing.CurlRunnings.Internal
 import           Testing.CurlRunnings.Internal.Parser
 import           Testing.CurlRunnings.Types
 import           Text.Printf
+import           System.Directory
 
 -- | decode a json or yaml file into a suite object
 decodeFile :: FilePath -> IO (Either String CurlSuite)
-decodeFile specPath =
-  case last $ T.splitOn "." (T.pack specPath) of
-    "json" ->
-      eitherDecode' <$> B.readFile specPath :: IO (Either String CurlSuite)
-    "yaml" ->
-      Y.decodeEither <$> B8S.readFile specPath :: IO (Either String CurlSuite)
-    "yml" ->
-      Y.decodeEither <$> B8S.readFile specPath :: IO (Either String CurlSuite)
-    _ -> return . Left $ printf "Invalid spec path %s" (T.pack specPath)
+decodeFile specPath = doesFileExist specPath >>= \exists ->
+  if exists then
+    case last $ T.splitOn "." (T.pack specPath) of
+      "json" ->
+        eitherDecode' <$> B.readFile specPath :: IO (Either String CurlSuite)
+      "yaml" ->
+        Y.decodeEither <$> B8S.readFile specPath :: IO (Either String CurlSuite)
+      "yml" ->
+        Y.decodeEither <$> B8S.readFile specPath :: IO (Either String CurlSuite)
+      _ -> return . Left $ printf "Invalid spec path %s" specPath
+  else return . Left $ printf "%s not found" specPath
 
 -- | Run a single test case, and returns the result. IO is needed here since this method is responsible
 -- for actually curling the test case endpoint and parsing the result.
@@ -54,7 +57,7 @@ runCase previousResults curlCase = do
     httpBS .
     setRequestHeaders
        (toHTTPHeaders $ fromMaybe (HeaderSet []) (headers curlCase)) .
-    setRequestBodyJSON (fromMaybe (emptyObject) (requestData curlCase)) $
+    setRequestBodyJSON (fromMaybe emptyObject (requestData curlCase)) $
     initReq {method = B8S.pack . show $ requestMethod curlCase}
   returnVal <-
     (return . decode . B.fromStrict $ getResponseBody response) :: IO (Maybe Value)
