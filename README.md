@@ -31,7 +31,8 @@ language, which is a future goal for the project
 
 There are few options to install:
 
-- download the releases from the github [releases page](https://github.com/aviaviavi/curl-runnings/releases)
+- download the releases from the
+  github [releases page](https://github.com/aviaviavi/curl-runnings/releases)
 - `stack install curl-runnings`
 - `cabal install curl-runnings`
 - build from source with `stack`
@@ -46,30 +47,32 @@ single curl and set of assertions about the response.
 
 Once you've written a spec, simply run it with:
 
-```bash
-$ curl-runnings -f path/to/your/spec.yaml
-```
+```bash $ curl-runnings -f path/to/your/spec.yaml ```
 
 If all your tests pass, curl-runnings will cleanly exit with a 0 code. A code of
 1 will be returned if any tests failed.
 
 For more info:
 
-```bash
-$ curl-runnings --help
-```
+```bash $ curl-runnings --help ```
 
 ### Roadmap
 
+Curl-runnings is totally usable now but is also being actively developed.
 Contributions in any form are welcome and encouraged. Don't be shy! :D
 
 - [x] Json specifications for tests
 - [x] Yaml specifications for tests
+- [ ] More specification features
+  - [x] Reference values from previous json responses in matchers
+  - [ ] Environment variable interpolation
+  - [ ] Call out to arbitrary shell commands in and between test cases
+  - [ ] Verbosity levels: print out the curl commands being run
+  - [ ] Timeouts
+  - [ ] Support for non-json content type
+  - [ ] Retry logic
+  - [ ] Ability to configure alerts
 - [ ] Embedded dsl for specifications for tests. As the specification gets more complex.
   - [ ] Spec out dsl that can compile down into a yaml/json spec
   - [ ] Implement dsl
-- [ ] More specification features
-  - [ ] timeouts
-  - [ ] retry logic
-  - [ ] ability to configure alerts
   
