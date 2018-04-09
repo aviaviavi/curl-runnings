@@ -1,5 +1,5 @@
-{-# LANGUAGE DeriveGeneric        #-}
-{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- | Data types for curl-runnings tests
 
@@ -22,6 +22,7 @@ module Testing.CurlRunnings.Types
   , InterpolatedQuery(..)
   , FullQueryText
   , SingleQueryText
+  , CurlRunningsState(..)
 
   , isFailing
   , isPassing
@@ -257,6 +258,7 @@ instance Show AssertionFailure where
   show (DataFailure curlCase expected receivedVal) =
     case expected of
       Exactly expectedVal ->
+
         printf
           "JSON response from %s didn't match spec. Expected: %s. Actual: %s"
           (url curlCase)
@@ -312,13 +314,18 @@ instance ToJSON CurlSuite
 
 -- | Simple predicate that checks if the result is passing
 isPassing :: CaseResult -> Bool
-isPassing (CasePass _ _ _)   = True
-isPassing (CaseFail _ _ _ _ ) = False
+isPassing CasePass {} = True
+isPassing CaseFail {} = False
 
 -- | Simple predicate that checks if the result is failing
 isFailing :: CaseResult -> Bool
-isFailing (CasePass _ _ _)   = False
-isFailing (CaseFail _ _ _ _) = True
+isFailing = not . isPassing
+
+-- | A map of the system environment
+type Environment = H.HashMap T.Text T.Text
+
+-- | The state of a suite. Tracks environment variables, and all the test results so far
+data CurlRunningsState = CurlRunningsState Environment [CaseResult]
 
 -- | A single lookup operation in a json query
 data Index
@@ -330,16 +337,18 @@ data Index
   | KeyIndex T.Text
   -- | A standard json array index lookup.
   | ArrayIndex Integer
+  deriving (Show)
 
-instance Show Index where
-  show (CaseResultIndex t) = "SUITE[" ++ show t ++ "]"
-  show (KeyIndex key)      = "." ++ T.unpack key
-  show (ArrayIndex i)      = printf "[%d]" i
+printOriginalQuery (CaseResultIndex t) = "SUITE[" ++ show t ++ "]"
+printOriginalQuery (KeyIndex key)      = "." ++ T.unpack key
+printOriginalQuery (ArrayIndex i)      = printf "[%d]" i
 
 -- | A single entity to be queries from a json value
 data Query =
   -- | A single query contains a list of discrete index operations
-  Query [Index]
+  Query [Index] |
+  -- | Lookup a string in the environment
+  EnvironmentVariable T.Text
   deriving (Show)
 
 -- | A distinct parsed unit in a query

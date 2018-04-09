@@ -1,6 +1,7 @@
 ---
 - name: test 1 
-  url: https://tabdextension.com/ping
+  # interpolate environment variables with ${...} just like you would in bash
+  url: 'https://tabdextension.com/${ping_path}'
   requestMethod: GET
   expectData:
     exactly:
@@ -25,8 +26,9 @@
   expectData:
     contains:
       - keyValueMatch:
-          key: ping 
-          value: $<SUITE[0].ping>
+          # environment interpolation just like bash
+          key: 'interpolated ${env_variable} ${another_variable}-key'
+          value: ${ping_value}
       - keyValueMatch:
           key: msg
           value: $<SUITE[0].msg>
