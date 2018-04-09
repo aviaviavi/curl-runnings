@@ -37,6 +37,7 @@ main = hspec $
     parseQuery "$<SUITE[1].key[r]>" `shouldSatisfy` isLeft
     parseQuery "$<SUITE[1].key[1][1] $<>>" `shouldSatisfy` isLeft
     parseQuery "$<SUITE[1].key[1][1]" `shouldSatisfy` isLeft
+    parseQuery "$<SUITE[1]>.key[1][1] ${" `shouldSatisfy` isLeft
 
 testValidSpec :: String -> IO ()
 testValidSpec file = do
