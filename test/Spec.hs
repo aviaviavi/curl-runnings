@@ -29,6 +29,7 @@ main = hspec $
     parseQuery "$<SUITE[100].key.key[0].key_with_underscores>" `shouldSatisfy` isRight
     parseQuery "some text before $<SUITE[100].key.key[0].key_with_underscores> and after" `shouldSatisfy` isRight
     parseQuery "some $<SUITE[100]> querires $<SUITE[100]>" `shouldSatisfy` isRight
+    parseQuery "some $<SUITE[100]> querires $<SUITE[100]> ${SOME_ENV_VARIABLE} asdf" `shouldSatisfy` isRight
 
   it "should reject invalid queries" $ do
     parseQuery "$<" `shouldSatisfy` isLeft
@@ -36,6 +37,7 @@ main = hspec $
     parseQuery "$<SUITE[1].key[r]>" `shouldSatisfy` isLeft
     parseQuery "$<SUITE[1].key[1][1] $<>>" `shouldSatisfy` isLeft
     parseQuery "$<SUITE[1].key[1][1]" `shouldSatisfy` isLeft
+    parseQuery "$<SUITE[1]>.key[1][1] ${" `shouldSatisfy` isLeft
 
 testValidSpec :: String -> IO ()
 testValidSpec file = do

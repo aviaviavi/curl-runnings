@@ -80,6 +80,12 @@ brackets = between (symbol "[") (symbol "]")
 bracket :: Parser T.Text
 bracket = symbol "[" <|> symbol "]"
 
+braces ::  Parser a -> Parser a
+braces = between (symbol "${") (string "}")
+
+brace :: Parser T.Text
+brace = symbol "{" <|> symbol "}"
+
 integer :: Parser Integer
 integer = lexeme L.decimal
 
@@ -89,29 +95,36 @@ dot = symbol "."
 arrayIndexParser :: Parser Index
 arrayIndexParser = notFollowedBy gtlt >> ArrayIndex <$> brackets integer
 
+environmentVariableParser :: Parser Query
+environmentVariableParser = do
+  notFollowedBy endingChars
+  (EnvironmentVariable . T.pack) <$> braces (lexeme $ many (noneOf ['[', ']', '<', '>', ' ', '{', '}']))
+
 endingChars :: Parser T.Text
-endingChars = dot <|> eol <|> bracket <|> gtlt
+endingChars = dot <|> eol <|> bracket <|> gtlt <|> brace
 
 keyIndexParser :: Parser Index
 keyIndexParser = do
   notFollowedBy endingChars
   (lexeme . try) ((KeyIndex . T.pack) <$> p)
   where
-    p = (:) <$> letterChar <*> many (noneOf ['.', '[', ']', '<', '>', ' '])
+    p = (:) <$> letterChar <*> many (noneOf ['.', '[', ']', '<', '>', ' ', '{', '}'])
 
-jsonIndexParser :: Parser [Index]
-jsonIndexParser = do
-  _ <- leadingText
-  inGTLT $ some (parseSuiteIndex' <|> keyIndexParser <|> arrayIndexParser)
+jsonIndexParser :: Parser Query
+jsonIndexParser =
+  leadingText >>
+  (inGTLT $ some (parseSuiteIndex' <|> keyIndexParser <|> arrayIndexParser)) >>=
+  return . Query
 
 interpolatedQueryParser :: Parser InterpolatedQuery
 interpolatedQueryParser = do
   text <- leadingText
-  q <- jsonIndexParser
-  return $ InterpolatedQuery (T.pack text) (Query q)
+  q <- environmentVariableParser <|> jsonIndexParser
+  if null text then return $ NonInterpolatedQuery q
+  else return $ InterpolatedQuery (T.pack text) q
 
 leadingText :: Parser String
-leadingText = manyTill anyChar $ lookAhead $ symbol "$<"
+leadingText = manyTill anyChar $ lookAhead (symbol "$<" <|> "${")
 
 noQueryText :: Parser InterpolatedQuery
 noQueryText = do
@@ -119,7 +132,9 @@ noQueryText = do
   eof
   if "$<" `isInfixOf` str
     then fail "invalid `$<` found"
-    else return $ LiteralText $ T.pack str
+    else if "${" `isInfixOf` str
+      then fail "invalid `${` found"
+      else return $ LiteralText $ T.pack str
 
 parseFullTextWithQuery :: Parser [InterpolatedQuery]
 parseFullTextWithQuery = many ((try interpolatedQueryParser) <|> noQueryText)
