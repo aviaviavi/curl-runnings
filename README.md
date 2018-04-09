@@ -65,7 +65,7 @@ Contributions in any form are welcome and encouraged. Don't be shy! :D
 - [x] Yaml specifications for tests
 - [ ] More specification features
   - [x] Reference values from previous json responses in matchers
-  - [ ] Environment variable interpolation
+  - [x] Environment variable interpolation
   - [ ] Call out to arbitrary shell commands in and between test cases
   - [ ] Verbosity levels: print out the curl commands being run
   - [ ] Timeouts
