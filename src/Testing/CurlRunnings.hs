@@ -60,9 +60,9 @@ runCase state curlCase = do
       initReq <- parseRequest $ T.unpack interpolatedUrl
       response <-
         httpBS .
+        setRequestBodyJSON (fromMaybe emptyObject (requestData curlCase)) .
         setRequestHeaders
-          (toHTTPHeaders $ fromMaybe (HeaderSet []) (headers curlCase)) .
-        setRequestBodyJSON (fromMaybe emptyObject (requestData curlCase)) $
+          (toHTTPHeaders $ fromMaybe (HeaderSet []) (headers curlCase)) $
         initReq {method = B8S.pack . show $ requestMethod curlCase}
       returnVal <-
         (return . decode . B.fromStrict $ getResponseBody response) :: IO (Maybe Value)
@@ -90,13 +90,19 @@ checkHeaders state curlCase@(CurlCase _ _ _ _ _ _ _ (Just matcher@(HeaderMatcher
        _ ->
          let successfulInterpolations =
                map
-                 (fromRight (error "bug in curl-runnings found :("))
+                 (fromRight
+                    (error
+                       $ programCrashString "checkHeaders"))
                  interpolatedHeaderAttempts
              notFound =
                filter (not . headerIn receivedHeaders) successfulInterpolations
          in if null notFound
               then Nothing
-              else Just $ HeaderFailure curlCase (HeaderMatcher successfulInterpolations) receivedHeaders
+              else Just $
+                   HeaderFailure
+                     curlCase
+                     (HeaderMatcher successfulInterpolations)
+                     receivedHeaders
 
 interpolatePartialHeader :: CurlRunningsState -> PartialHeaderMatcher -> Either QueryError PartialHeaderMatcher
 interpolatePartialHeader state (PartialHeaderMatcher k v) =
@@ -190,11 +196,10 @@ runReplacementsOnSubvalues state subexprs =
              case expr of
                ValueMatch v ->
                  case runReplacements state v of
-                   Left l       -> Left l
+                   Left l -> Left l
                    Right newVal -> Right $ ValueMatch newVal
                KeyValueMatch k v ->
-                 case ( interpolateQueryString state k
-                      , runReplacements state v) of
+                 case (interpolateQueryString state k, runReplacements state v) of
                    (Left l, _) -> Left l
                    (_, Left l) -> Left l
                    (Right k', Right v') ->
@@ -202,7 +207,13 @@ runReplacementsOnSubvalues state subexprs =
           subexprs
   in case find isLeft replacementResults of
        Just (Left err) -> Left err
-       Nothing -> Right $ map (fromRight (error "a bug in curl-runnings has appeared :(")) replacementResults
+       Nothing ->
+         Right $
+         map
+           (fromRight
+              (error
+                 $ programCrashString "runReplacementsOnSubvalues"))
+           replacementResults
 
 -- | runReplacements
 runReplacements :: CurlRunningsState -> Value -> Either QueryError Value
@@ -242,7 +253,12 @@ runReplacements p (Array a) =
   in case find isLeft results of
        Just l -> l
        Nothing ->
-         Right . Array $ V.map (fromRight (error "shouldn't happen")) results
+         Right . Array $
+         V.map
+           (fromRight
+              (error
+                 $ programCrashString "runReplacements"))
+           results
 -- special case, i can't figure out how to get the parser to parse empty strings :'(
 runReplacements _ s@(String "") = Right s
 runReplacements state (String s) =
@@ -372,3 +388,7 @@ toHTTPHeader (Header a b) = (CI.mk . B8S.pack $ T.unpack a, B8S.pack $ T.unpack 
 -- | Utility conversion from CurlRunnings headers to HTTP headers.
 toHTTPHeaders :: Headers -> HTTP.RequestHeaders
 toHTTPHeaders (HeaderSet h) = map toHTTPHeader h
+
+-- | TODO - we should refactor to get rid of this
+programCrashString :: T.Text -> String
+programCrashString = T.unpack . ("curl runnings crashed to due a bug! Tried to unpack an Either value that turned out to be a Left in: " <>)
