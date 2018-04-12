@@ -74,20 +74,46 @@ runCase state curlCase = do
               isJust
               [ checkBody state curlCase returnVal
               , checkCode curlCase returnCode
-              , checkHeaders curlCase receivedHeaders
+              , checkHeaders state curlCase receivedHeaders
               ]
       return $
         case assertionErrors of
           []       -> CasePass curlCase (Just receivedHeaders) returnVal
           failures -> CaseFail curlCase (Just receivedHeaders) returnVal failures
 
-checkHeaders :: CurlCase -> Headers  -> Maybe AssertionFailure
-checkHeaders (CurlCase _ _ _ _ _ _ _ Nothing) _ = Nothing
-checkHeaders curlCase@(CurlCase _ _ _ _ _ _ _ (Just matcher@(HeaderMatcher m))) receivedHeaders =
-  let notFound = filter (not . headerIn receivedHeaders) m
-  in if null notFound
-       then Nothing
-       else Just $ HeaderFailure curlCase matcher receivedHeaders
+checkHeaders :: CurlRunningsState -> CurlCase -> Headers -> Maybe AssertionFailure
+checkHeaders _ (CurlCase _ _ _ _ _ _ _ Nothing) _ = Nothing
+checkHeaders state curlCase@(CurlCase _ _ _ _ _ _ _ (Just matcher@(HeaderMatcher m))) receivedHeaders =
+  let interpolatedHeaderAttempts = map (interpolatePartialHeader state) m
+  in case find isLeft interpolatedHeaderAttempts of
+       Just (Left f) -> Just $ QueryFailure curlCase f
+       _ ->
+         let successfulInterpolations =
+               map
+                 (fromRight (error "bug in curl-runnings found :("))
+                 interpolatedHeaderAttempts
+             notFound =
+               filter (not . headerIn receivedHeaders) successfulInterpolations
+         in if null notFound
+              then Nothing
+              else Just $ HeaderFailure curlCase (HeaderMatcher successfulInterpolations) receivedHeaders
+
+interpolatePartialHeader :: CurlRunningsState -> PartialHeaderMatcher -> Either QueryError PartialHeaderMatcher
+interpolatePartialHeader state (PartialHeaderMatcher k v) =
+  let k' = interpolateQueryString state <$> k
+      v' = interpolateQueryString state <$> v
+  in case (k', v') of
+       (Just (Left err), _) -> Left err
+       (_, Just (Left err)) -> Left err
+       (Just (Right p), Just (Right q)) ->
+         Right $ PartialHeaderMatcher (Just p) (Just q)
+       (Just (Right p), Nothing) ->
+         Right $ PartialHeaderMatcher (Just p) Nothing
+       (Nothing, Just (Right p)) ->
+         Right $ PartialHeaderMatcher Nothing (Just p)
+       _ ->
+         tracer "WARNING: empty header matcher found" . Right $
+         PartialHeaderMatcher Nothing Nothing
 
 -- | Does this header contain our matcher?
 headerMatches :: PartialHeaderMatcher -> Header -> Bool
