@@ -36,6 +36,9 @@ script: |
   cd $HOME/.local/bin/ &&
   tar -czvf curl-runnings-$version.tar.gz curl-runnings &&
   ln -s curl-runnings-$version.tar.gz curl-runnings.tar.gz
+  mkdir -p $HOME/cr-release
+  cd $HOME/cr-release
+  ln -s $HOME/.local/bin/curl-runnings-$version.tar.gz curl-runnings-$version.tar.gz 
 
 # Caching so the next build will be fast too.
 cache:
@@ -48,3 +51,11 @@ addons:
     paths:
       - $HOME/.local/bin/curl-runnings.tar.gz
     branch: master
+
+deploy:
+  provider: releases
+  api_key: "GITHUB OAUTH TOKEN"
+  file: $HOME/cr-release/*
+  skip_cleanup: true
+  on:
+    tags: true
