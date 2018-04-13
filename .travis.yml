@@ -35,7 +35,7 @@ script: |
   cd $HOME/.local/bin/ &&
   tar -czvf curl-runnings-$version.tar.gz curl-runnings &&
   ln -s curl-runnings-$version.tar.gz curl-runnings.tar.gz &&
-  mkdir -p $HOME/cr-release
+  mkdir -p $HOME/cr-release &&
   cd $HOME/cr-release &&
   ln -s $HOME/.local/bin/curl-runnings-$version.tar.gz curl-runnings-$version.tar.gz
 cache:
@@ -55,4 +55,4 @@ deploy:
     secure: dWUoi8jGZTsx6hLC6E6sIfj5VjP46FD2wBzMxNdqQ3LCVpBOs8AkHwCoKj5ZzWboHk+3NP4TiQT/ryPg/pKL+8Bp9YWnWO+sSLffJXWv9qM6g6Jx4OXsExR38XD3bL/6goNyiQzS53vjN2XkNsFHl82wBYoRjE9LvB+dGMHrNxFVMfIke3Wd/10pvwwxV+5oBAmyD0jklM3kyqJ2MDvTg0IT6h9XZXh72VgmqBaIOBbfPvrb8E9CtkCAfWHT8Wsjkt9Ga8rp6upV+7UAZrveJKy7Oyvrx++Cd1x/K4ts72veowoomhX5eclUcJxzqd/qTUCNSnE5v9Nms6EON61nfIolWtwQPN93wrqePNYIbP/SZo6z3LjJ/ywfZ95PJEQyfIg1FQUwH55dqwiezhbVu6mnING8TubvcihWBPGeAAhynAtWlSx4BEsAsQLwFZ2EBeqmRVIbo2hAgjDjr8Khm8awY6pupROXDFMuWn6lDKd6i7v7yirEwivrsC6mGjRF2prqRVQV4i6rDawtyZVOVosuUJ39OYHAzXfk+sAUM8nz9zu92neQ3cYrvMysYLlqhq8pGeRGJeypepBWHEEu0H5UepZ/RmXyAx95oPs9HD7LuHqbrMhZd68uGLAwF9v/YvF8OpQyUGKxRCRU7k/1LlMPOMbnhtWsEIH50wSkZEI=
   file: "$HOME/cr-release/*"
   on:
-    repo: aviaviavi/curl-runnings
+    tags: true
