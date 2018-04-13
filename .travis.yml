@@ -13,11 +13,10 @@ addons:
 # The different configurations we want to test. You could also do things like
 # change flags or use --stack-yaml to point to a different file.
 env:
-- ARGS=""
-#- ARGS="--resolver lts-2"
-#- ARGS="--resolver lts"
-#- ARGS="--resolver nightly"
-
+  matrix:
+  - ARGS=""
+  global:
+    secure: nGk87m3sb9TcudcmiVixwrwZ4J3pDrUtzYFcXT3Tp2kUikYS8u5/lCisA9nqjM4Fo7AB9xY6bViN6Db9zhlaioqTVAcLM/GiqfwEtUyTGQlTntl8cu5WIbIT/dYIAvDK4nflWNKLF8Lru79BbeS0vUL/wEviDbOETddUiP2Nckox9J4anv0Jrwe/06iTnGE8W2G2L949DDuBX7ruh7mSkevWmye9Ie968JKM0jmAMLNl8N7BwcfWlZaNqXLATe9C0elsyXeh7kJ7UGwUT7UOykgXVLW4CBRC9BwLPsXdGZII8jwnGo8gNgNvoYOIEqGkKG5JqEmeRl7xhts5a52VafW+vXHQvPm6ZT8tU6GuEYzka02Jk2byA38AtFjErzmyZixSyIpUDimV+pMbWP3MhQ4YvPVkCbpG21RqsatfH5rrAwEzb6FDOL2xBdX+quJ482iVsEqn0m1KLGGUfD1WshdyqhRU8rSYDpgNcjaZS4NHBBkh1dnqGgl2jxjpqsBu17b3k/0mmoIed59diHpPuKqHOR18QZ3A/wbqN9O2STyHNEL4cmjYZHPvWm6JTjlfidNMZyaD0oBNw7FPwyMFVIYz1plkQdc+gpCtw0pmi6hnm19JIjtzEtdTH/OpUqIel5+51+ts+DKfvFIeOVHizy4BFCWGv+L9R5EB+Shjn5U=
 before_install:
 # Download and unpack the stack executable
 - mkdir -p ~/.local/bin
@@ -28,19 +27,17 @@ before_install:
 # library, executables, and test suites, and runs the test suites.
 # `--no-terminal works` around some quirks in Travis's terminal implementation.
 script: |
-  version=$(grep "^version" curl-runnings.cabal | sed 's/ //g'  | cut -d ':' -f 2) &&
+  version=$(grep \"^version\" curl-runnings.cabal | sed 's/ //g'  | cut -d ':' -f 2) &&
   echo "building binary version $version" &&
   stack $ARGS --no-terminal --install-ghc --haddock test &&
   stack $ARGS --no-terminal --install-ghc --haddock install &&
   strip $HOME/.local/bin/curl-runnings &&
   cd $HOME/.local/bin/ &&
   tar -czvf curl-runnings-$version.tar.gz curl-runnings &&
-  ln -s curl-runnings-$version.tar.gz curl-runnings.tar.gz
+  ln -s curl-runnings-$version.tar.gz curl-runnings.tar.gz &&
   mkdir -p $HOME/cr-release
-  cd $HOME/cr-release
-  ln -s $HOME/.local/bin/curl-runnings-$version.tar.gz curl-runnings-$version.tar.gz 
-
-# Caching so the next build will be fast too.
+  cd $HOME/cr-release &&
+  ln -s $HOME/.local/bin/curl-runnings-$version.tar.gz curl-runnings-$version.tar.gz
 cache:
   directories:
   - $HOME/.stack
@@ -54,8 +51,8 @@ addons:
 
 deploy:
   provider: releases
-  api_key: "GITHUB OAUTH TOKEN"
-  file: $HOME/cr-release/*
-  skip_cleanup: true
+  api_key:
+    secure: dWUoi8jGZTsx6hLC6E6sIfj5VjP46FD2wBzMxNdqQ3LCVpBOs8AkHwCoKj5ZzWboHk+3NP4TiQT/ryPg/pKL+8Bp9YWnWO+sSLffJXWv9qM6g6Jx4OXsExR38XD3bL/6goNyiQzS53vjN2XkNsFHl82wBYoRjE9LvB+dGMHrNxFVMfIke3Wd/10pvwwxV+5oBAmyD0jklM3kyqJ2MDvTg0IT6h9XZXh72VgmqBaIOBbfPvrb8E9CtkCAfWHT8Wsjkt9Ga8rp6upV+7UAZrveJKy7Oyvrx++Cd1x/K4ts72veowoomhX5eclUcJxzqd/qTUCNSnE5v9Nms6EON61nfIolWtwQPN93wrqePNYIbP/SZo6z3LjJ/ywfZ95PJEQyfIg1FQUwH55dqwiezhbVu6mnING8TubvcihWBPGeAAhynAtWlSx4BEsAsQLwFZ2EBeqmRVIbo2hAgjDjr8Khm8awY6pupROXDFMuWn6lDKd6i7v7yirEwivrsC6mGjRF2prqRVQV4i6rDawtyZVOVosuUJ39OYHAzXfk+sAUM8nz9zu92neQ3cYrvMysYLlqhq8pGeRGJeypepBWHEEu0H5UepZ/RmXyAx95oPs9HD7LuHqbrMhZd68uGLAwF9v/YvF8OpQyUGKxRCRU7k/1LlMPOMbnhtWsEIH50wSkZEI=
+  file: "$HOME/cr-release/*"
   on:
-    tags: true
+    repo: aviaviavi/curl-runnings
