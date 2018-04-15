@@ -3,9 +3,8 @@
 
 -- | curl-runnings is a framework for writing declaratively writing curl based tests for your API's.
 -- Write your test specifications with yaml or json, and you're done!
---
 module Testing.CurlRunnings
-    (
+  (
       runCase
     , runSuite
     , decodeFile
@@ -28,12 +27,12 @@ import qualified Data.Yaml                            as Y
 import           Network.HTTP.Conduit
 import           Network.HTTP.Simple
 import qualified Network.HTTP.Types.Header            as HTTP
+import           System.Directory
+import           System.Environment
 import           Testing.CurlRunnings.Internal
 import           Testing.CurlRunnings.Internal.Parser
 import           Testing.CurlRunnings.Types
 import           Text.Printf
-import           System.Directory
-import           System.Environment
 
 -- | decode a json or yaml file into a suite object
 decodeFile :: FilePath -> IO (Either String CurlSuite)
@@ -55,53 +54,58 @@ runCase :: CurlRunningsState -> CurlCase -> IO CaseResult
 runCase state curlCase = do
   let eInterpolatedUrl = interpolateQueryString state $ T.pack $ url curlCase
   case eInterpolatedUrl of
-    Left err -> return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err]
-    Right interpolatedUrl -> do
-      initReq <- parseRequest $ T.unpack interpolatedUrl
-      response <-
-        httpBS .
-        setRequestBodyJSON (fromMaybe emptyObject (requestData curlCase)) .
-        setRequestHeaders
-          (toHTTPHeaders $ fromMaybe (HeaderSet []) (headers curlCase)) $
-        initReq {method = B8S.pack . show $ requestMethod curlCase}
-      returnVal <-
-        (return . decode . B.fromStrict $ getResponseBody response) :: IO (Maybe Value)
-      let returnCode = getResponseStatusCode response
-          receivedHeaders = fromHTTPHeaders $ responseHeaders response
-          assertionErrors =
-            map fromJust $
-            filter
-              isJust
-              [ checkBody state curlCase returnVal
-              , checkCode curlCase returnCode
-              , checkHeaders state curlCase receivedHeaders
-              ]
-      return $
-        case assertionErrors of
-          []       -> CasePass curlCase (Just receivedHeaders) returnVal
-          failures -> CaseFail curlCase (Just receivedHeaders) returnVal failures
+    Left err ->
+      return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err]
+    Right interpolatedUrl ->
+      case sequence $ runReplacements state <$> requestData curlCase of
+        Left l ->
+          return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase l]
+        Right replacedJSON ->
+          case interpolateHeaders state $
+               fromMaybe (HeaderSet []) (headers curlCase) of
+            Left l ->
+              return $
+              CaseFail curlCase Nothing Nothing [QueryFailure curlCase l]
+            Right h -> do
+              initReq <- parseRequest $ T.unpack interpolatedUrl
+              response <-
+                httpBS .
+                setRequestBodyJSON (fromMaybe emptyObject replacedJSON) .
+                setRequestHeaders (toHTTPHeaders h) $
+                initReq {method = B8S.pack . show $ requestMethod curlCase}
+              returnVal <-
+                (return . decode . B.fromStrict $ getResponseBody response) :: IO (Maybe Value)
+              let returnCode = getResponseStatusCode response
+                  receivedHeaders = fromHTTPHeaders $ responseHeaders response
+                  assertionErrors =
+                    map fromJust $
+                    filter
+                      isJust
+                      [ checkBody state curlCase returnVal
+                      , checkCode curlCase returnCode
+                      , checkHeaders state curlCase receivedHeaders
+                      ]
+              return $
+                case assertionErrors of
+                  [] -> CasePass curlCase (Just receivedHeaders) returnVal
+                  failures ->
+                    CaseFail curlCase (Just receivedHeaders) returnVal failures
 
 checkHeaders :: CurlRunningsState -> CurlCase -> Headers -> Maybe AssertionFailure
 checkHeaders _ (CurlCase _ _ _ _ _ _ _ Nothing) _ = Nothing
-checkHeaders state curlCase@(CurlCase _ _ _ _ _ _ _ (Just matcher@(HeaderMatcher m))) receivedHeaders =
-  let interpolatedHeaderAttempts = map (interpolatePartialHeader state) m
-  in case find isLeft interpolatedHeaderAttempts of
-       Just (Left f) -> Just $ QueryFailure curlCase f
-       _ ->
-         let successfulInterpolations =
-               map
-                 (fromRight
-                    (error
-                       $ programCrashString "checkHeaders"))
-                 interpolatedHeaderAttempts
-             notFound =
-               filter (not . headerIn receivedHeaders) successfulInterpolations
+checkHeaders state curlCase@(CurlCase _ _ _ _ _ _ _ (Just (HeaderMatcher m))) receivedHeaders =
+  let interpolatedHeaders = mapM (interpolatePartialHeader state) m
+  in case interpolatedHeaders of
+       Left f -> Just $ QueryFailure curlCase f
+       Right headerList ->
+         let notFound =
+               filter (not . headerIn receivedHeaders) headerList
          in if null notFound
               then Nothing
               else Just $
                    HeaderFailure
                      curlCase
-                     (HeaderMatcher successfulInterpolations)
+                     (HeaderMatcher headerList)
                      receivedHeaders
 
 interpolatePartialHeader :: CurlRunningsState -> PartialHeaderMatcher -> Either QueryError PartialHeaderMatcher
@@ -120,6 +124,17 @@ interpolatePartialHeader state (PartialHeaderMatcher k v) =
        _ ->
          tracer "WARNING: empty header matcher found" . Right $
          PartialHeaderMatcher Nothing Nothing
+
+interpolateHeaders :: CurlRunningsState -> Headers -> Either QueryError Headers
+interpolateHeaders state (HeaderSet headerList) =
+  mapRight HeaderSet $
+  mapM
+    (\(Header k v) ->
+       case sequence
+              [interpolateQueryString state k, interpolateQueryString state v] of
+         Left err       -> Left err
+         Right [k', v'] -> Right $ Header k' v')
+    headerList
 
 -- | Does this header contain our matcher?
 headerMatches :: PartialHeaderMatcher -> Header -> Bool
@@ -189,31 +204,20 @@ checkBody _ curlCase@(CurlCase _ _ _ _ _ (Just anything) _ _) Nothing =
 checkBody _ (CurlCase _ _ _ _ _ Nothing _ _) _ = Nothing
 
 runReplacementsOnSubvalues :: CurlRunningsState -> [JsonSubExpr] -> Either QueryError [JsonSubExpr]
-runReplacementsOnSubvalues state subexprs =
-  let replacementResults :: [Either QueryError JsonSubExpr] =
-        map
-          (\expr ->
-             case expr of
-               ValueMatch v ->
-                 case runReplacements state v of
-                   Left l -> Left l
-                   Right newVal -> Right $ ValueMatch newVal
-               KeyValueMatch k v ->
-                 case (interpolateQueryString state k, runReplacements state v) of
-                   (Left l, _) -> Left l
-                   (_, Left l) -> Left l
-                   (Right k', Right v') ->
-                     Right KeyValueMatch {matchKey = k', matchValue = v'})
-          subexprs
-  in case find isLeft replacementResults of
-       Just (Left err) -> Left err
-       Nothing ->
-         Right $
-         map
-           (fromRight
-              (error
-                 $ programCrashString "runReplacementsOnSubvalues"))
-           replacementResults
+runReplacementsOnSubvalues state =
+  mapM
+    (\expr ->
+       case expr of
+         ValueMatch v ->
+           case runReplacements state v of
+             Left l       -> Left l
+             Right newVal -> Right $ ValueMatch newVal
+         KeyValueMatch k v ->
+           case (interpolateQueryString state k, runReplacements state v) of
+             (Left l, _) -> Left l
+             (_, Left l) -> Left l
+             (Right k', Right v') ->
+               Right KeyValueMatch {matchKey = k', matchValue = v'})
 
 -- | runReplacements
 runReplacements :: CurlRunningsState -> Value -> Either QueryError Value
@@ -249,16 +253,10 @@ runReplacements state (Object o) =
        (Right o)
        keysWithUpdatedKeyVal
 runReplacements p (Array a) =
-  let results = V.map (runReplacements p) a
-  in case find isLeft results of
-       Just l -> l
-       Nothing ->
-         Right . Array $
-         V.map
-           (fromRight
-              (error
-                 $ programCrashString "runReplacements"))
-           results
+  let results = V.mapM (runReplacements p) a
+  in case results of
+       Left l  -> Left l
+       Right r -> Right $ Array r
 -- special case, i can't figure out how to get the parser to parse empty strings :'(
 runReplacements _ s@(String "") = Right s
 runReplacements state (String s) =
@@ -388,7 +386,3 @@ toHTTPHeader (Header a b) = (CI.mk . B8S.pack $ T.unpack a, B8S.pack $ T.unpack 
 -- | Utility conversion from CurlRunnings headers to HTTP headers.
 toHTTPHeaders :: Headers -> HTTP.RequestHeaders
 toHTTPHeaders (HeaderSet h) = map toHTTPHeader h
-
--- | TODO - we should refactor to get rid of this
-programCrashString :: T.Text -> String
-programCrashString = T.unpack . ("curl runnings crashed to due a bug! Tried to unpack an Either value that turned out to be a Left in: " <>)
