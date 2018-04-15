@@ -53,43 +53,41 @@ decodeFile specPath = doesFileExist specPath >>= \exists ->
 runCase :: CurlRunningsState -> CurlCase -> IO CaseResult
 runCase state curlCase = do
   let eInterpolatedUrl = interpolateQueryString state $ T.pack $ url curlCase
-  case eInterpolatedUrl of
-    Left err ->
+      eInterpolatedHeaders =
+        interpolateHeaders state $ fromMaybe (HeaderSet []) (headers curlCase)
+  case (eInterpolatedUrl, eInterpolatedHeaders) of
+    (Left err, _) ->
       return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err]
-    Right interpolatedUrl ->
+    (_, Left err) ->
+      return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err]
+    (Right interpolatedUrl, Right interpolatedHeaders) ->
       case sequence $ runReplacements state <$> requestData curlCase of
         Left l ->
           return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase l]
-        Right replacedJSON ->
-          case interpolateHeaders state $
-               fromMaybe (HeaderSet []) (headers curlCase) of
-            Left l ->
-              return $
-              CaseFail curlCase Nothing Nothing [QueryFailure curlCase l]
-            Right h -> do
-              initReq <- parseRequest $ T.unpack interpolatedUrl
-              response <-
-                httpBS .
-                setRequestBodyJSON (fromMaybe emptyObject replacedJSON) .
-                setRequestHeaders (toHTTPHeaders h) $
-                initReq {method = B8S.pack . show $ requestMethod curlCase}
-              returnVal <-
-                (return . decode . B.fromStrict $ getResponseBody response) :: IO (Maybe Value)
-              let returnCode = getResponseStatusCode response
-                  receivedHeaders = fromHTTPHeaders $ responseHeaders response
-                  assertionErrors =
-                    map fromJust $
-                    filter
-                      isJust
-                      [ checkBody state curlCase returnVal
-                      , checkCode curlCase returnCode
-                      , checkHeaders state curlCase receivedHeaders
-                      ]
-              return $
-                case assertionErrors of
-                  [] -> CasePass curlCase (Just receivedHeaders) returnVal
-                  failures ->
-                    CaseFail curlCase (Just receivedHeaders) returnVal failures
+        Right replacedJSON -> do
+          initReq <- parseRequest $ T.unpack interpolatedUrl
+          response <-
+            httpBS .
+            setRequestBodyJSON (fromMaybe emptyObject replacedJSON) .
+            setRequestHeaders (toHTTPHeaders interpolatedHeaders) $
+            initReq {method = B8S.pack . show $ requestMethod curlCase}
+          returnVal <-
+            (return . decode . B.fromStrict $ getResponseBody response) :: IO (Maybe Value)
+          let returnCode = getResponseStatusCode response
+              receivedHeaders = fromHTTPHeaders $ responseHeaders response
+              assertionErrors =
+                map fromJust $
+                filter
+                  isJust
+                  [ checkBody state curlCase returnVal
+                  , checkCode curlCase returnCode
+                  , checkHeaders state curlCase receivedHeaders
+                  ]
+          return $
+            case assertionErrors of
+              [] -> CasePass curlCase (Just receivedHeaders) returnVal
+              failures ->
+                CaseFail curlCase (Just receivedHeaders) returnVal failures
 
 checkHeaders :: CurlRunningsState -> CurlCase -> Headers -> Maybe AssertionFailure
 checkHeaders _ (CurlCase _ _ _ _ _ _ _ Nothing) _ = Nothing
@@ -127,14 +125,14 @@ interpolatePartialHeader state (PartialHeaderMatcher k v) =
 
 interpolateHeaders :: CurlRunningsState -> Headers -> Either QueryError Headers
 interpolateHeaders state (HeaderSet headerList) =
-  mapRight HeaderSet $
   mapM
     (\(Header k v) ->
        case sequence
               [interpolateQueryString state k, interpolateQueryString state v] of
-         Left err       -> Left err
+         Left err -> Left err
          Right [k', v'] -> Right $ Header k' v')
-    headerList
+    headerList >>=
+  (Right . HeaderSet)
 
 -- | Does this header contain our matcher?
 headerMatches :: PartialHeaderMatcher -> Header -> Bool

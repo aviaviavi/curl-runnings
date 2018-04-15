@@ -2,6 +2,7 @@
 - name: test 1 
   # interpolate environment variables with ${...} just like you would in bash
   url: 'https://tabdextension.com/${ping_path}'
+  headers: 'ping: ${ping_path}'
   requestMethod: GET
   expectData:
     exactly:
