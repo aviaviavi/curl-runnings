@@ -260,7 +260,7 @@ runReplacements _ s@(String "") = Right s
 runReplacements state (String s) =
   case parseQuery s of
     Right [LiteralText t] -> Right $ String t
-    Right [q@(InterpolatedQuery _ _)] -> getValueForQuery state q
+    Right [q@(InterpolatedQuery _ _)] -> getStringValueForQuery state q >>= (Right . String)
     Right [q@(NonInterpolatedQuery _)] -> getValueForQuery state q
     Right _ -> mapRight String $ interpolateQueryString state s
     Left parseErr -> Left parseErr
