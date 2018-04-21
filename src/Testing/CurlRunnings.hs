@@ -129,7 +129,7 @@ interpolateHeaders state (HeaderSet headerList) =
     (\(Header k v) ->
        case sequence
               [interpolateQueryString state k, interpolateQueryString state v] of
-         Left err -> Left err
+         Left err       -> Left err
          Right [k', v'] -> Right $ Header k' v')
     headerList >>=
   (Right . HeaderSet)
@@ -291,7 +291,8 @@ getStringValueForQuery state i@(InterpolatedQuery rawText (Query _)) =
     Left l           -> Left l
     Right (String s) -> Right $ rawText <> s
     (Right o)        -> Left $ QueryTypeMismatch "Expected a string" o
-getStringValueForQuery (CurlRunningsState env _) (InterpolatedQuery rawText (EnvironmentVariable v)) = Right $ rawText <> H.lookupDefault "" v env
+getStringValueForQuery (CurlRunningsState env _) (InterpolatedQuery rawText (EnvironmentVariable v)) =
+  Right $ rawText <> H.lookupDefault "" v env
 
 -- | Lookup the value for the specified query
 getValueForQuery :: CurlRunningsState -> InterpolatedQuery -> Either QueryError Value
@@ -299,7 +300,7 @@ getValueForQuery _ (LiteralText rawText) = Right $ String rawText
 getValueForQuery (CurlRunningsState _ previousResults) full@(NonInterpolatedQuery (Query indexes)) =
   case head indexes of
     (CaseResultIndex i) ->
-      let (CasePass _ _ returnedJSON) = previousResults !! fromInteger i
+      let (CasePass _ _ returnedJSON) = arrayGet previousResults $ fromInteger i
           jsonToIndex =
             case returnedJSON of
               Just v -> Right v
@@ -314,7 +315,7 @@ getValueForQuery (CurlRunningsState _ previousResults) full@(NonInterpolatedQuer
                 (Left l, _) -> Left l
                 (Right (Object o), KeyIndex k) ->
                   Right $ H.lookupDefault Null k o
-                (Right (Array a), ArrayIndex i') -> Right $ a V.! fromInteger i'
+                (Right (Array a), ArrayIndex i') -> Right $ arrayGet (V.toList a) $ fromInteger i'
                 (Right Null, q) ->
                   Left $ NullPointer (T.pack $ show full) (T.pack $ show q)
                 (Right o, _) -> Left $ QueryTypeMismatch (T.pack $ show index) o)

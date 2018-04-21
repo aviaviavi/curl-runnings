@@ -87,7 +87,7 @@ brace :: Parser T.Text
 brace = symbol "{" <|> symbol "}"
 
 integer :: Parser Integer
-integer = lexeme L.decimal
+integer = lexeme $ L.signed spaceOrDot L.decimal
 
 dot :: Parser T.Text
 dot = symbol "."

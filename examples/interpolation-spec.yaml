@@ -25,7 +25,7 @@
 - name: test will fail
   url: https://tabdextension.com/ping
   requestMethod: GET
-  expectHeaders: "ping: $<SUITE[0].ping>; ${ping_path}: pong"
+  expectHeaders: "ping: $<SUITE[-1].ping>; ${ping_path}: pong"
   expectStatus: 200
 
 - name: test will fail
