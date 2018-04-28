@@ -28,6 +28,10 @@ main = hspec $
   it "should provide valid example json specs" $
     testValidSpec "/examples/example-spec.json"
 
+  it "should provide valid example dhall specs" $
+    testValidSpec "/examples/example-spec.dhall"
+
+
   -- note that this doesn't actually try to parse the interpolations themselves,
   -- but that would be useful thing to add here
   it "should provid a valid interpolation spec" $
