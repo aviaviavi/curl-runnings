@@ -8,8 +8,9 @@ module Testing.CurlRunnings.Internal
   , arrayGet
   , LogLevel(..)
   , CurlRunningsLogger
-  , CurlRunningsPureLogger
+  , CurlRunningsUnsafeLogger
   , makeLogger
+  , makeUnsafeLogger
   ) where
 
 import Debug.Trace
@@ -37,7 +38,7 @@ arrayGet a i
 data LogLevel = ERROR | INFO | DEBUG deriving (Show, Eq, Ord, Enum)
 
 type CurlRunningsLogger = (LogLevel -> String -> IO ())
-type CurlRunningsPureLogger a = (LogLevel -> String -> a)
+type CurlRunningsUnsafeLogger a = (LogLevel -> String -> a -> a)
 
 makeLogger :: LogLevel -> CurlRunningsLogger
 makeLogger threshold = \level text ->
@@ -46,5 +47,11 @@ makeLogger threshold = \level text ->
   else
     return ()
 
+makeUnsafeLogger :: Show a => LogLevel -> CurlRunningsUnsafeLogger a
+makeUnsafeLogger threshold = \level text object ->
+  if level <= threshold then
+    tracer text object
+  else
+    object
 
 

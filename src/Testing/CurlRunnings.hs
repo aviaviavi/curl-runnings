@@ -66,9 +66,10 @@ runCase state curlCase = do
           return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase l]
         Right replacedJSON -> do
           initReq <- parseRequest $ T.unpack interpolatedUrl
-          let request = setRequestBodyJSON (fromMaybe emptyObject replacedJSON) .
-                          setRequestHeaders (toHTTPHeaders interpolatedHeaders) $
-                          initReq {method = B8S.pack . show $ requestMethod curlCase}
+          let request =
+                setRequestBodyJSON (fromMaybe emptyObject replacedJSON) .
+                setRequestHeaders (toHTTPHeaders interpolatedHeaders) $
+                initReq {method = B8S.pack . show $ requestMethod curlCase}
           logger state DEBUG (show request)
           response <- httpBS request
           logger state DEBUG (show response)
@@ -98,7 +99,7 @@ checkHeaders state curlCase@(CurlCase _ _ _ _ _ _ _ (Just (HeaderMatcher m))) re
        Left f -> Just $ QueryFailure curlCase f
        Right headerList ->
          let notFound =
-               filter (not . headerIn receivedHeaders) headerList
+               filter (not . headerIn receivedHeaders) (unsafeLogger state DEBUG "header matchers" headerList)
          in if null notFound
               then Nothing
               else Just $
@@ -121,7 +122,7 @@ interpolatePartialHeader state (PartialHeaderMatcher k v) =
        (Nothing, Just (Right p)) ->
          Right $ PartialHeaderMatcher Nothing (Just p)
        _ ->
-         tracer "WARNING: empty header matcher found" . Right $
+         unsafeLogger state ERROR "WARNING: empty header matcher found" . Right $
          PartialHeaderMatcher Nothing Nothing
 
 interpolateHeaders :: CurlRunningsState -> Headers -> Either QueryError Headers
@@ -162,10 +163,10 @@ runSuite (CurlSuite cases) logLevel = do
        case safeLast prevResults of
          Just CaseFail {} -> return prevResults
          Just CasePass {} -> do
-           result <- runCase (CurlRunningsState envMap prevResults $ makeLogger logLevel) curlCase >>= printR
+           result <- runCase (CurlRunningsState envMap prevResults logLevel) curlCase >>= printR
            return $ prevResults ++ [result]
          Nothing -> do
-           result <- runCase (CurlRunningsState envMap [] $ makeLogger logLevel) curlCase >>= printR
+           result <- runCase (CurlRunningsState envMap [] logLevel) curlCase >>= printR
            return [result])
     []
     cases
@@ -177,7 +178,7 @@ checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Exactly expectedValue)) _ _)
   case runReplacements state expectedValue of
     (Left err) -> Just $ QueryFailure curlCase err
     (Right interpolated) ->
-      if interpolated /= receivedBody
+      if (unsafeLogger state DEBUG "exact body matcher" interpolated) /= receivedBody
         then Just $
              DataFailure
                (curlCase {expectData = Just $ Exactly interpolated})
@@ -190,7 +191,7 @@ checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Contains subexprs)) _ _) (Ju
   case runReplacementsOnSubvalues state subexprs of
     Left f -> Just $ QueryFailure curlCase f
     Right updatedMatcher ->
-      if jsonContainsAll receivedBody updatedMatcher
+      if jsonContainsAll receivedBody (unsafeLogger state DEBUG "partial json body matcher" updatedMatcher)
         then Nothing
         else Just $
              DataFailure curlCase (Contains updatedMatcher) (Just receivedBody)

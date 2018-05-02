@@ -27,6 +27,7 @@ module Testing.CurlRunnings.Types
   , isFailing
   , isPassing
   , logger
+  , unsafeLogger
 
   ) where
 
@@ -326,10 +327,13 @@ isFailing = not . isPassing
 type Environment = H.HashMap T.Text T.Text
 
 -- | The state of a suite. Tracks environment variables, and all the test results so far
-data CurlRunningsState = CurlRunningsState Environment [CaseResult] CurlRunningsLogger
+data CurlRunningsState = CurlRunningsState Environment [CaseResult] LogLevel
 
 logger :: CurlRunningsState -> CurlRunningsLogger
-logger (CurlRunningsState _ _ l) = l
+logger (CurlRunningsState _ _ l) = makeLogger l
+
+unsafeLogger :: Show a => CurlRunningsState -> CurlRunningsUnsafeLogger a
+unsafeLogger (CurlRunningsState _ _ l) = makeUnsafeLogger l
 
 -- | A single lookup operation in a json query
 data Index
