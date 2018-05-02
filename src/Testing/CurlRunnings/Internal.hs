@@ -6,9 +6,14 @@ module Testing.CurlRunnings.Internal
   , tracer
   , mapRight
   , arrayGet
+  , LogLevel(..)
+  , CurlRunningsLogger
+  , CurlRunningsPureLogger
+  , makeLogger
   ) where
 
 import Debug.Trace
+import qualified Data.Text as T
 
 makeGreen :: String -> String
 makeGreen s = "\x1B[32m" ++ s ++ "\x1B[0m"
@@ -28,3 +33,18 @@ arrayGet :: [a] -> Int -> a
 arrayGet a i
   | i >= 0 = a !! i
   | otherwise = reverse a !! (-i)
+
+data LogLevel = ERROR | INFO | DEBUG deriving (Show, Eq, Ord, Enum)
+
+type CurlRunningsLogger = (LogLevel -> String -> IO ())
+type CurlRunningsPureLogger a = (LogLevel -> String -> a)
+
+makeLogger :: LogLevel -> CurlRunningsLogger
+makeLogger threshold = \level text ->
+  if level <= threshold then
+    putStrLn text
+  else
+    return ()
+
+
+
