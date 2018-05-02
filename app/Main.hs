@@ -3,9 +3,9 @@
 
 module Main where
 
-import qualified Data.Text                        as T
-import           Data.Version                     (showVersion)
-import           Paths_curl_runnings              (version)
+import qualified Data.Text                     as T
+import           Data.Version                  (showVersion)
+import           Paths_curl_runnings           (version)
 import           System.Console.CmdArgs
 import           System.Environment
 import           System.Exit

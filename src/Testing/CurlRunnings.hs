@@ -99,7 +99,9 @@ checkHeaders state curlCase@(CurlCase _ _ _ _ _ _ _ (Just (HeaderMatcher m))) re
        Left f -> Just $ QueryFailure curlCase f
        Right headerList ->
          let notFound =
-               filter (not . headerIn receivedHeaders) (unsafeLogger state DEBUG "header matchers" headerList)
+               filter
+                 (not . headerIn receivedHeaders)
+                 (unsafeLogger state DEBUG "header matchers" headerList)
          in if null notFound
               then Nothing
               else Just $
