@@ -6,15 +6,16 @@ module Testing.CurlRunnings.Internal
   , tracer
   , mapRight
   , arrayGet
+  , makeLogger
+  , makeUnsafeLogger
+
   , LogLevel(..)
   , CurlRunningsLogger
   , CurlRunningsUnsafeLogger
-  , makeLogger
-  , makeUnsafeLogger
   ) where
 
-import Debug.Trace
-import qualified Data.Text as T
+import           Control.Monad
+import           Debug.Trace
 
 makeGreen :: String -> String
 makeGreen s = "\x1B[32m" ++ s ++ "\x1B[0m"
@@ -37,18 +38,20 @@ arrayGet a i
 
 data LogLevel = ERROR | INFO | DEBUG deriving (Show, Eq, Ord, Enum)
 
+-- | A logger that respects the verbosity level given by input args
 type CurlRunningsLogger = (LogLevel -> String -> IO ())
+
+-- | A tracer that respects the verbosity level given by input args. Logging
+-- with this calls out to Debug.trace and can be used in pure code, but be aware
+-- of the unsafe IO.
 type CurlRunningsUnsafeLogger a = (LogLevel -> String -> a -> a)
 
 makeLogger :: LogLevel -> CurlRunningsLogger
-makeLogger threshold = \level text ->
-  if level <= threshold then
-    putStrLn text
-  else
-    return ()
+makeLogger threshold level text =
+  when (level <= threshold) $ putStrLn text
 
 makeUnsafeLogger :: Show a => LogLevel -> CurlRunningsUnsafeLogger a
-makeUnsafeLogger threshold = \level text object ->
+makeUnsafeLogger threshold level text object =
   if level <= threshold then
     tracer text object
   else

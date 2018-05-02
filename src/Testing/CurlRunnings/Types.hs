@@ -242,47 +242,57 @@ data AssertionFailure
   -- | Something else
   | UnexpectedFailure
 
+
+colorizeExpects :: String -> String
+colorizeExpects t =
+  let expectedColor = makeRed "Excpected:"
+      actualColor = makeRed "Actual:"
+      replacedExpected = T.replace "Expected:" (T.pack expectedColor) (T.pack t)
+  in T.unpack $ T.replace "Actual:" (T.pack actualColor) replacedExpected
+
 instance Show AssertionFailure where
   show (StatusFailure c receivedCode) =
     case expectStatus c of
       ExactCode code ->
+        colorizeExpects $
         printf
           "Incorrect status code from %s. Expected: %s. Actual: %s"
           (url c)
           (show code)
           (show receivedCode)
       AnyCodeIn codes ->
+        colorizeExpects $
         printf
-          "Incorrect status code from %s. Expected one of: %s. Actual: %s"
+          "Incorrect status code from %s. Expected: %s. Actual: %s"
           (url c)
           (show codes)
           (show receivedCode)
   show (DataFailure curlCase expected receivedVal) =
     case expected of
       Exactly expectedVal ->
-
+        colorizeExpects $
         printf
           "JSON response from %s didn't match spec. Expected: %s. Actual: %s"
           (url curlCase)
           (B8.unpack (encodePretty expectedVal))
           (B8.unpack (encodePretty receivedVal))
       (Contains expectedVals) ->
+        colorizeExpects $
         printf
           "JSON response from %s didn't contain the matcher. Expected: %s to be each be subvalues in: %s"
           (url curlCase)
           (B8.unpack (encodePretty expectedVals))
           (B8.unpack (encodePretty receivedVal))
   show (HeaderFailure curlCase expected receivedHeaders) =
+    colorizeExpects $
     printf
-      "Headers from %s didn't contain expected headers. Expected headers: %s. Received headers: %s"
+      "Headers from %s didn't contain expected headers. Expected: %s. Actual: %s"
       (url curlCase)
       (show expected)
       (show receivedHeaders)
   show (QueryFailure curlCase queryErr) =
-    printf
-      "JSON query error in spec %s: %s"
-      (name curlCase)
-      (show queryErr)
+    colorizeExpects $
+    printf "JSON query error in spec %s: %s" (name curlCase) (show queryErr)
   show UnexpectedFailure = "Unexpected Error D:"
 
 -- | A type representing the result of a single curl, and all associated
@@ -372,7 +382,8 @@ data InterpolatedQuery
 
 printQueryString :: InterpolatedQuery -> String
 printQueryString (LiteralText t) = show t
-printQueryString (InterpolatedQuery raw (Query indexes)) = printf "%s$<%s>" raw (concat $ map show indexes)
+printQueryString (InterpolatedQuery raw (Query indexes)) =
+  printf "%s$<%s>" raw (concat $ map show indexes)
 printQueryString (NonInterpolatedQuery (Query indexes)) = printf "$<%s>" (concat $ map show indexes)
 
 -- | The full string in which a query appears, eg "prefix-${{SUITE[0].key.another_key[0].last_key}}"
