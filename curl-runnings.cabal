@@ -2,10 +2,10 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f7bf475463248ca5311f48309a9d417ac30a9591678a51010e5a1813dbaefd76
+-- hash: 00ab6da505f40306f6558ac123f3c5e24a78dcf4cb61b5f8d7facc514c8b68dd
 
 name:           curl-runnings
-version:        0.5.5
+version:        0.6.0
 synopsis:       A framework for declaratively writing curl based API tests
 description:    Please see the README on Github at <https://github.com/aviaviavi/curl-runnings#readme>
 category:       Testing

@@ -8,7 +8,8 @@ curl-runnings is a framework for writing declarative, curl based tests for your 
 
 Write your tests quickly and correctly with a straight-forward specification in
 yaml or json. A DSL for writing your tests is on the way! Alternatively, you can
-use the curl-runnings library to write your tests directly in Haskell.
+use the curl-runnings library to write your tests in Haskell (a haskell setup is
+absolutely not required to use this tool).
 
 ### Why?
 
@@ -33,8 +34,7 @@ There are few options to install:
 
 - download the releases from the
   github [releases page](https://github.com/aviaviavi/curl-runnings/releases)
-- `stack install curl-runnings`
-- `cabal install curl-runnings`
+- install the binary with `stack` or `cabal`
 - build from source with `stack`
 
 ### Writing a test specification
@@ -56,10 +56,12 @@ For more info:
 
 ```bash $ curl-runnings --help ```
 
-### Roadmap
+### Contributing
 
 Curl-runnings is totally usable now but is also being actively developed.
 Contributions in any form are welcome and encouraged. Don't be shy! :D
+
+### Roadmap
 
 - [x] Json specifications for tests
 - [x] Yaml specifications for tests
@@ -71,7 +73,6 @@ Contributions in any form are welcome and encouraged. Don't be shy! :D
   - [ ] Timeouts
   - [ ] Support for non-json content type
   - [ ] Retry logic
-  - [ ] Ability to configure alerts
 - [ ] Embedded dsl for specifications for tests. As the specification gets more complex.
   - [ ] Spec out dsl that can compile down into a yaml/json spec
   - [ ] Implement dsl

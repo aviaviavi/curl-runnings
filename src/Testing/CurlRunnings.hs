@@ -66,11 +66,13 @@ runCase state curlCase = do
           return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase l]
         Right replacedJSON -> do
           initReq <- parseRequest $ T.unpack interpolatedUrl
-          response <-
-            httpBS .
-            setRequestBodyJSON (fromMaybe emptyObject replacedJSON) .
-            setRequestHeaders (toHTTPHeaders interpolatedHeaders) $
-            initReq {method = B8S.pack . show $ requestMethod curlCase}
+          let request =
+                setRequestBodyJSON (fromMaybe emptyObject replacedJSON) .
+                setRequestHeaders (toHTTPHeaders interpolatedHeaders) $
+                initReq {method = B8S.pack . show $ requestMethod curlCase}
+          logger state DEBUG (show request)
+          response <- httpBS request
+          logger state DEBUG (show response)
           returnVal <-
             (return . decode . B.fromStrict $ getResponseBody response) :: IO (Maybe Value)
           let returnCode = getResponseStatusCode response
@@ -97,7 +99,9 @@ checkHeaders state curlCase@(CurlCase _ _ _ _ _ _ _ (Just (HeaderMatcher m))) re
        Left f -> Just $ QueryFailure curlCase f
        Right headerList ->
          let notFound =
-               filter (not . headerIn receivedHeaders) headerList
+               filter
+                 (not . headerIn receivedHeaders)
+                 (unsafeLogger state DEBUG "header matchers" headerList)
          in if null notFound
               then Nothing
               else Just $
@@ -120,7 +124,7 @@ interpolatePartialHeader state (PartialHeaderMatcher k v) =
        (Nothing, Just (Right p)) ->
          Right $ PartialHeaderMatcher Nothing (Just p)
        _ ->
-         tracer "WARNING: empty header matcher found" . Right $
+         unsafeLogger state ERROR "WARNING: empty header matcher found" . Right $
          PartialHeaderMatcher Nothing Nothing
 
 interpolateHeaders :: CurlRunningsState -> Headers -> Either QueryError Headers
@@ -152,8 +156,8 @@ printR :: Show a => a -> IO a
 printR x = print x >> return x
 
 -- | Runs the test cases in order and stop when an error is hit. Returns all the results
-runSuite :: CurlSuite -> IO [CaseResult]
-runSuite (CurlSuite cases) = do
+runSuite :: CurlSuite -> LogLevel -> IO [CaseResult]
+runSuite (CurlSuite cases) logLevel = do
   fullEnv <- getEnvironment
   let envMap = H.fromList $ map (\(x, y) -> (T.pack x, T.pack y)) fullEnv
   foldM
@@ -161,10 +165,10 @@ runSuite (CurlSuite cases) = do
        case safeLast prevResults of
          Just CaseFail {} -> return prevResults
          Just CasePass {} -> do
-           result <- runCase (CurlRunningsState envMap prevResults) curlCase >>= printR
+           result <- runCase (CurlRunningsState envMap prevResults logLevel) curlCase >>= printR
            return $ prevResults ++ [result]
          Nothing -> do
-           result <- runCase (CurlRunningsState envMap []) curlCase >>= printR
+           result <- runCase (CurlRunningsState envMap [] logLevel) curlCase >>= printR
            return [result])
     []
     cases
@@ -176,7 +180,7 @@ checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Exactly expectedValue)) _ _)
   case runReplacements state expectedValue of
     (Left err) -> Just $ QueryFailure curlCase err
     (Right interpolated) ->
-      if interpolated /= receivedBody
+      if (unsafeLogger state DEBUG "exact body matcher" interpolated) /= receivedBody
         then Just $
              DataFailure
                (curlCase {expectData = Just $ Exactly interpolated})
@@ -189,7 +193,7 @@ checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Contains subexprs)) _ _) (Ju
   case runReplacementsOnSubvalues state subexprs of
     Left f -> Just $ QueryFailure curlCase f
     Right updatedMatcher ->
-      if jsonContainsAll receivedBody updatedMatcher
+      if jsonContainsAll receivedBody (unsafeLogger state DEBUG "partial json body matcher" updatedMatcher)
         then Nothing
         else Just $
              DataFailure curlCase (Contains updatedMatcher) (Just receivedBody)
@@ -291,13 +295,13 @@ getStringValueForQuery state i@(InterpolatedQuery rawText (Query _)) =
     Left l           -> Left l
     Right (String s) -> Right $ rawText <> s
     (Right o)        -> Left $ QueryTypeMismatch "Expected a string" o
-getStringValueForQuery (CurlRunningsState env _) (InterpolatedQuery rawText (EnvironmentVariable v)) =
+getStringValueForQuery (CurlRunningsState env _ _) (InterpolatedQuery rawText (EnvironmentVariable v)) =
   Right $ rawText <> H.lookupDefault "" v env
 
 -- | Lookup the value for the specified query
 getValueForQuery :: CurlRunningsState -> InterpolatedQuery -> Either QueryError Value
 getValueForQuery _ (LiteralText rawText) = Right $ String rawText
-getValueForQuery (CurlRunningsState _ previousResults) full@(NonInterpolatedQuery (Query indexes)) =
+getValueForQuery (CurlRunningsState _ previousResults _) full@(NonInterpolatedQuery (Query indexes)) =
   case head indexes of
     (CaseResultIndex i) ->
       let (CasePass _ _ returnedJSON) = arrayGet previousResults $ fromInteger i
@@ -324,7 +328,7 @@ getValueForQuery (CurlRunningsState _ previousResults) full@(NonInterpolatedQuer
     _ ->
       Left . QueryValidationError $
       T.pack $ "$<> queries must start with a SUITE[index] query: " ++ show full
-getValueForQuery (CurlRunningsState env _) (NonInterpolatedQuery (EnvironmentVariable var)) =
+getValueForQuery (CurlRunningsState env _ _) (NonInterpolatedQuery (EnvironmentVariable var)) =
   Right . String $ H.lookupDefault "" var env
 getValueForQuery state (InterpolatedQuery _ q) =
   case getValueForQuery state (NonInterpolatedQuery q) of
