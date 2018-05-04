@@ -1,6 +1,8 @@
 # curl-runnings
 
-[![Build Status](https://travis-ci.org/aviaviavi/curl-runnings.svg?branch=master)](https://travis-ci.org/aviaviavi/curl-runnings)
+[![Build Status](https://travis-ci.org/aviaviavi/curl-runnings.svg?branch=master)](https://travis-ci.org/aviaviavi/curl-runnings) [![Hackage](https://img.shields.io/hackage/v/curl-runnings.svg)](https://hackage.haskell.org/package/curl-runnings)
+
+
 
 _Feel the rhythm! Feel the rhyme! Get on up, it's testing time! curl-runnings!_
 
