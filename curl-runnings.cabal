@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 00ab6da505f40306f6558ac123f3c5e24a78dcf4cb61b5f8d7facc514c8b68dd
+-- hash: e22614c4e739f355b79fac77eb1cf5c8111237f2adc4aebcccbbb3b118e8d817
 
 name:           curl-runnings
 version:        0.6.0
@@ -23,7 +23,6 @@ extra-source-files:
     examples/example-spec.json
     examples/example-spec.yaml
     examples/interpolation-spec.yaml
-    examples/test.json
     README.md
 
 source-repository head
