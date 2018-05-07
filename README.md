@@ -39,7 +39,7 @@ is also being developed and may fulfill the same needs.
 
 There are few options to install:
 
-- download the linux-built releases from the
+- download the Linux or Mac built releases from the
   github [releases page](https://github.com/aviaviavi/curl-runnings/releases)
 - install the binary with `stack` or `cabal`
 - build from source with `stack`
