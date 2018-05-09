@@ -19,7 +19,7 @@ This library came out of a pain-point my coworkers at
 Writing integration tests for our APIs was generally annoying. They were time
 consuming to write especially considering how basic they were, and we are a
 small startup where developer time is in short supply. Over time, we found
-ourselves at sometimes just writing bash scripts that would `curl` our various
+ourselves sometimes just writing bash scripts that would `curl` our various
 endpoints and check the output with very basic matchers. These tests were fast
 to write, but quickly became difficult to maintain as complexity was added. Not
 only did maintence become challenging, but the whole system was very error prone
