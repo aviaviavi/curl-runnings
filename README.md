@@ -22,7 +22,7 @@ small startup where developer time is in short supply. Over time, we found
 ourselves sometimes just writing bash scripts that would `curl` our various
 endpoints and check the output with very basic matchers. These tests were fast
 to write, but quickly became difficult to maintain as complexity was added. Not
-only did maintence become challenging, but the whole system was very error prone
+only did maintenance become challenging, but the whole system was very error prone
 and confidence in the tests overall was decreasing. At the end of the day, we
 needed to just curl some endpoints and verify the output looks sane, and do this
 quickly and correctly. This is precisely the goal of curl-runnings.
