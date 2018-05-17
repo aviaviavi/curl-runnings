@@ -44,3 +44,20 @@
       - valueMatch: 'hello $<SUITE[0].ping> : $<SUITE[0].ping> trailing text'
       - valueMatch: $<SUITE[0].okay>
   expectStatus: 200
+
+- name: test should pass
+  url: https://tabdextension.com/ping
+  requestMethod: GET
+  expectData:
+    notContains:
+      - keyValueMatch:
+          # environment interpolation just like bash
+          key: 'interpolated ${env_variable} ${another_variable}-key'
+          value: ${ping_value}
+      - keyValueMatch:
+          key: msg
+          value: $<SUITE[0].msg>
+      # here, we are interpolating several string values into a string
+      - valueMatch: 'hello $<SUITE[0].ping> : $<SUITE[0].ping> trailing text'
+      - valueMatch: $<SUITE[0].okay>
+  expectStatus: 200

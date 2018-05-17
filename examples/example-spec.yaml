@@ -51,6 +51,19 @@
 - name: test 4
   url: http://your-url.com/other/path
   requestMethod: GET
+  expectData:
+    # In the `notContains` case of data validation, a list of matchers is specified. Currently,
+    # possible types are `valueMatch` | `keyValueMatch`.
+    notContains:
+    - keyValueMatch:
+        key: okay
+        value: true
+    - valueMatch: true
+  expectStatus: 200
+
+- name: test 5
+  url: http://your-url.com/other/path
+  requestMethod: GET
   # Specify the headers you want to sent, just like the -H flag in a curl command
   # IE "key: value; key: value; ..."
   headers: "Content-Type: application/json"
@@ -59,7 +72,7 @@
   # Header strings again match the -H syntax from curl
   expectHeaders: "Content-Type: application/json; Hello: world"
 
-- name: test 5
+- name: test 6
   url: http://your-url.com/other/path
   requestMethod: GET
   headers: "Content-Type: application/json"
@@ -69,7 +82,7 @@
   -
     key: "Key-With-Val-We-Dont-Care-About"
 
-- name: test 6
+- name: test 7
   url: http://your-url.com/other/path
   requestMethod: GET
   headers: "Content-Type: application/json"

@@ -198,6 +198,16 @@ checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Contains subexprs)) _ _) (Ju
         else Just $
              DataFailure curlCase (Contains updatedMatcher) (Just receivedBody)
 
+-- | We are checking a list of expected absent subvalues, and we have a payload to check
+checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (NotContains subexprs)) _ _) (Just receivedBody) =
+  case runReplacementsOnSubvalues state subexprs of
+    Left f -> Just $ QueryFailure curlCase f
+    Right updatedMatcher ->
+      if jsonContainsAny receivedBody (unsafeLogger state DEBUG "partial json body matcher" updatedMatcher)
+        then Just $
+             DataFailure curlCase (NotContains updatedMatcher) (Just receivedBody)
+        else Nothing
+
 -- | We expected a body but didn't get one
 checkBody _ curlCase@(CurlCase _ _ _ _ _ (Just anything) _ _) Nothing =
   Just $ DataFailure curlCase anything Nothing
@@ -337,14 +347,25 @@ getValueForQuery state (InterpolatedQuery _ q) =
     Right v -> Left $ QueryTypeMismatch (T.pack "Expected a string") v
     Left l -> Left l
 
+jsonContains :: ((JsonSubExpr -> Bool) -> [JsonSubExpr] -> Bool)
+                  -> Value -> [JsonSubExpr] -> Bool
+jsonContains f jsonValue =
+  let
+    traversedValue = traverseValue jsonValue
+  in
+  f $ \match ->
+    case match of
+      ValueMatch subval -> subval `elem` traversedValue
+      KeyValueMatch key subval ->
+        any (\o -> containsKeyVal o key subval) traversedValue
+
 -- | Does the json value contain all of these sub-values?
 jsonContainsAll :: Value -> [JsonSubExpr] -> Bool
-jsonContainsAll jsonValue =
-  all $ \match ->
-    case match of
-      ValueMatch subval -> subval `elem` traverseValue jsonValue
-      KeyValueMatch key subval ->
-        any (\o -> containsKeyVal o key subval) (traverseValue jsonValue)
+jsonContainsAll = jsonContains all
+
+-- | Does the json value contain any of these sub-values?
+jsonContainsAny :: Value -> [JsonSubExpr] -> Bool
+jsonContainsAny = jsonContains any
 
 -- | Does the json value contain the given key value pair?
 containsKeyVal :: Value -> T.Text -> Value -> Bool

@@ -64,6 +64,7 @@ data JsonMatcher
   = Exactly Value
   -- | A list of matchers to make assertions about some subset of the response.
   | Contains [JsonSubExpr]
+  | NotContains [JsonSubExpr]
   deriving (Show, Generic)
 
 instance ToJSON JsonMatcher
@@ -72,6 +73,7 @@ instance FromJSON JsonMatcher where
   parseJSON (Object v)
     | isJust $ H.lookup "exactly" v = Exactly <$> v .: "exactly"
     | isJust $ H.lookup "contains" v = Contains <$> v .: "contains"
+    | isJust $ H.lookup "notContains" v = NotContains <$> v .: "notContains"
   parseJSON invalid = typeMismatch "JsonMatcher" invalid
 
 -- | A representation of a single header
@@ -279,7 +281,14 @@ instance Show AssertionFailure where
       (Contains expectedVals) ->
         colorizeExpects $
         printf
-          "JSON response from %s didn't contain the matcher. Expected: %s to be each be subvalues in: %s"
+          "JSON response from %s didn't contain the matcher. Expected: %s to each be subvalues in: %s"
+          (url curlCase)
+          (B8.unpack (encodePretty expectedVals))
+          (B8.unpack (encodePretty receivedVal))
+      (NotContains expectedVals) ->
+        colorizeExpects $
+        printf
+          "JSON response from %s did contain the matcher. Expected: %s not to be subvalues in: %s"
           (url curlCase)
           (B8.unpack (encodePretty expectedVals))
           (B8.unpack (encodePretty receivedVal))
