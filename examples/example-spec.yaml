@@ -82,7 +82,7 @@
   # IE "key: value; key: value; ..."
   headers: "Content-Type: application/json"
   expectStatus: 200
-  # The response must constain at least these headers exactly.
+  # The response must contain at least these headers exactly.
   # Header strings again match the -H syntax from curl
   expectHeaders: "Content-Type: application/json; Hello: world"
 

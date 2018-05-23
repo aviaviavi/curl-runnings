@@ -62,9 +62,9 @@ instance ToJSON HttpMethod
 data JsonMatcher
   -- | Performs `==`
   = Exactly Value
-  -- | A list of matchers to make assertions that certains values exist in the response
+  -- | A list of matchers to make assertions that contains values exist in the response
   | Contains [JsonSubExpr]
-  -- | A list of matchers to make assertions that certains values do not exist in the response
+  -- | A list of matchers to make assertions that contains values do not exist in the response
   | NotContains [JsonSubExpr]
   -- | We're specifiying both Contains and NotContains matchers
   | MixedContains [JsonMatcher]
