@@ -5,7 +5,6 @@
 
 module Testing.CurlRunnings.Types
   ( AssertionFailure(..)
-
   , CaseResult(..)
   , CurlSuite(..)
   , CurlCase(..)
@@ -259,7 +258,6 @@ data AssertionFailure
   -- | Something went wrong with a test case json query
   | QueryFailure CurlCase
                  QueryError
-
   -- | Something else
   | UnexpectedFailure
 
