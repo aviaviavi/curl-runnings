@@ -66,12 +66,33 @@
     "name": "test 5",
     "url": "http://your-url.com/other/path",
     "requestMethod": "GET",
+    "expectData": {
+      "contains": [
+        {
+          "keyValueMatch": {
+            "key": "okay",
+            "value": true
+          }
+        }
+      ],
+      "notContains": [
+        {
+          "valueMatch": false
+        }
+      ]
+    },
+    "expectStatus": 200
+  },
+  {
+    "name": "test 6",
+    "url": "http://your-url.com/other/path",
+    "requestMethod": "GET",
     "headers": "Content-Type: application/json",
     "expectStatus": 200,
     "expectHeaders": "Content-Type: application/json; Hello: world"
   },
   {
-    "name": "test 6",
+    "name": "test 7",
     "url": "http://your-url.com/other/path",
     "requestMethod": "GET",
     "headers": "Content-Type: application/json",
@@ -83,7 +104,7 @@
     ]
   },
   {
-    "name": "test 7",
+    "name": "test 8",
     "url": "http://your-url.com/other/path",
     "requestMethod": "GET",
     "headers": "Content-Type: application/json",

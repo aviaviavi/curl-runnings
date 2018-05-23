@@ -208,6 +208,18 @@ checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (NotContains subexprs)) _ _) 
              DataFailure curlCase (NotContains updatedMatcher) (Just receivedBody)
         else Nothing
 
+-- | We are checking for both contains and notContains vals, and we have a payload to check
+checkBody state curlCase@(CurlCase _ _ _ _ _ (Just m@(MixedContains subexprs)) _ _) receivedBody =
+  let failure = join $
+        find
+          isJust
+          (map
+            (\subexpr ->
+                checkBody state curlCase {expectData = Just subexpr} receivedBody)
+            subexprs)
+   in
+    fmap (\_ ->  DataFailure curlCase m receivedBody ) failure
+
 -- | We expected a body but didn't get one
 checkBody _ curlCase@(CurlCase _ _ _ _ _ (Just anything) _ _) Nothing =
   Just $ DataFailure curlCase anything Nothing

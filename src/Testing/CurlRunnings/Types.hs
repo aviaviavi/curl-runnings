@@ -62,9 +62,12 @@ instance ToJSON HttpMethod
 data JsonMatcher
   -- | Performs `==`
   = Exactly Value
-  -- | A list of matchers to make assertions about some subset of the response.
+  -- | A list of matchers to make assertions that contains values exist in the response
   | Contains [JsonSubExpr]
+  -- | A list of matchers to make assertions that contains values do not exist in the response
   | NotContains [JsonSubExpr]
+  -- | We're specifiying both Contains and NotContains matchers
+  | MixedContains [JsonMatcher]
   deriving (Show, Generic)
 
 instance ToJSON JsonMatcher
@@ -72,9 +75,23 @@ instance ToJSON JsonMatcher
 instance FromJSON JsonMatcher where
   parseJSON (Object v)
     | isJust $ H.lookup "exactly" v = Exactly <$> v .: "exactly"
+    | isJust (H.lookup "contains" v) && isJust (H.lookup "notContains" v) = do
+        c <- Contains <$> v .: "contains"
+        n <- NotContains <$> v .: "notContains"
+        return $ MixedContains [c, n]
     | isJust $ H.lookup "contains" v = Contains <$> v .: "contains"
     | isJust $ H.lookup "notContains" v = NotContains <$> v .: "notContains"
   parseJSON invalid = typeMismatch "JsonMatcher" invalid
+
+-- | Simple predicate to check value constructor type
+isContains :: JsonMatcher -> Bool
+isContains (Contains _) = True
+isContains _            = False
+
+-- | Simple predicate to check value constructor type
+isNotContains :: JsonMatcher -> Bool
+isNotContains (NotContains _) = True
+isNotContains _               = False
 
 -- | A representation of a single header
 data Header =
@@ -124,14 +141,14 @@ data QueryError
 instance Show QueryError where
   show (QueryParseError t q) = printf "error parsing query %s: %s" q $ T.unpack t
   show (NullPointer full part) = printf "null pointer in %s at %s" (T.unpack full) $ T.unpack part
-  show (QueryTypeMismatch message val) = printf "type error: %s %s" (message) $ show val
+  show (QueryTypeMismatch message val) = printf "type error: %s %s" message $ show val
   show (QueryValidationError message) = printf "invalid query: %s" message
 
 parseHeader :: T.Text -> Either T.Text Header
 parseHeader str =
   case map T.strip $ T.splitOn ":" str of
     [key, val] -> Right $ Header key val
-    anythingElse -> Left . T.pack $ "bad header found: " ++ (show anythingElse)
+    anythingElse -> Left . T.pack $ "bad header found: " ++ show anythingElse
 
 parseHeaders :: T.Text -> Either T.Text Headers
 parseHeaders str =
@@ -247,7 +264,7 @@ data AssertionFailure
 
 colorizeExpects :: String -> String
 colorizeExpects t =
-  let expectedColor = makeRed "Excpected:"
+  let expectedColor = makeRed "Expected:"
       actualColor = makeRed "Actual:"
       replacedExpected = T.replace "Expected:" (T.pack expectedColor) (T.pack t)
   in T.unpack $ T.replace "Actual:" (T.pack actualColor) replacedExpected
@@ -291,6 +308,14 @@ instance Show AssertionFailure where
           "JSON response from %s did contain the matcher. Expected: %s not to be subvalues in: %s"
           (url curlCase)
           (B8.unpack (encodePretty expectedVals))
+          (B8.unpack (encodePretty receivedVal))
+      (MixedContains expectedVals) ->
+        colorizeExpects $
+        printf
+          "JSON response from %s didn't satisfy the matcher. Expected: %s to each be subvalues and %s not to be subvalues in: %s"
+          (url curlCase)
+          (B8.unpack (encodePretty (filter isContains expectedVals)))
+          (B8.unpack (encodePretty (filter isNotContains expectedVals)))
           (B8.unpack (encodePretty receivedVal))
   show (HeaderFailure curlCase expected receivedHeaders) =
     colorizeExpects $
@@ -366,6 +391,7 @@ data Index
   | ArrayIndex Integer
   deriving (Show)
 
+printOriginalQuery :: Index -> String
 printOriginalQuery (CaseResultIndex t) = "SUITE[" ++ show t ++ "]"
 printOriginalQuery (KeyIndex key)      = "." ++ T.unpack key
 printOriginalQuery (ArrayIndex i)      = printf "[%d]" i
@@ -392,8 +418,8 @@ data InterpolatedQuery
 printQueryString :: InterpolatedQuery -> String
 printQueryString (LiteralText t) = show t
 printQueryString (InterpolatedQuery raw (Query indexes)) =
-  printf "%s$<%s>" raw (concat $ map show indexes)
-printQueryString (NonInterpolatedQuery (Query indexes)) = printf "$<%s>" (concat $ map show indexes)
+  printf "%s$<%s>" raw $ concatMap show indexes
+printQueryString (NonInterpolatedQuery (Query indexes)) = printf "$<%s>" (concatMap show indexes)
 
 -- | The full string in which a query appears, eg "prefix-${{SUITE[0].key.another_key[0].last_key}}"
 type FullQueryText = T.Text
