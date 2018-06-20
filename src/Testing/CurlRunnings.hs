@@ -236,6 +236,10 @@ runReplacementsOnSubvalues state =
            case runReplacements state v of
              Left l       -> Left l
              Right newVal -> Right $ ValueMatch newVal
+         KeyMatch k ->
+           case interpolateQueryString state k of
+             Left l       -> Left l
+             Right newKey -> Right $ KeyMatch newKey
          KeyValueMatch k v ->
            case (interpolateQueryString state k, runReplacements state v) of
              (Left l, _) -> Left l
@@ -368,6 +372,8 @@ jsonContains f jsonValue =
   f $ \match ->
     case match of
       ValueMatch subval -> subval `elem` traversedValue
+      KeyMatch key ->
+        any (`containsKey` key) traversedValue
       KeyValueMatch key subval ->
         any (\o -> containsKeyVal o key subval) traversedValue
 
@@ -383,6 +389,12 @@ jsonContainsAny = jsonContains any
 containsKeyVal :: Value -> T.Text -> Value -> Bool
 containsKeyVal jsonValue key val = case jsonValue of
   Object o -> H.lookup key o == Just val
+  _        -> False
+
+-- | Does the json value contain the given key value pair?
+containsKey :: Value -> T.Text -> Bool
+containsKey jsonValue key = case jsonValue of
+  Object o -> isJust $ H.lookup key o
   _        -> False
 
 -- | Fully traverse the json and return a list of all the values

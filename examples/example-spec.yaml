@@ -34,7 +34,7 @@
   requestMethod: GET
   expectData:
     # In the `contains` case of data validation, a list of matchers is specified. Currently,
-    # possible types are `valueMatch` | `keyValueMatch`.
+    # possible types are `keyMatch` | `valueMatch` | `keyValueMatch`.
     contains:
     # `keyValueMatch` looks for the key/value pair anywhere in the payload
     # here, {'okay': true} must be somewhere in the return payload
@@ -46,6 +46,8 @@
     # This can be useful for matching against values where you don't know the key ahead of time,
     # or for values in a top level array.
     - valueMatch: true
+    # `keyMatch` searches for a key anywhere in the payload
+    - keyMatch: okay
   expectStatus: 200
 
 - name: test 4
@@ -60,6 +62,8 @@
         key: okay
         value: true
     - valueMatch: true
+    # notContains + keyMatch works great for asserting no errors came back
+    - keyMatch: error
   expectStatus: 200
 
 - name: test 5

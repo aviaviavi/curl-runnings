@@ -193,6 +193,8 @@ data JsonSubExpr
   --  value. The motivation for this field is largely for checking contents of a
   --  top level array. It's also useful if you don't know the key ahead of time.
   = ValueMatch Value
+  -- | Assert a key exists anywhere in the json
+  | KeyMatch T.Text
   -- | Assert the key value pair can be found somewhere the json.
   | KeyValueMatch { matchKey   :: T.Text
                   , matchValue :: Value }
@@ -204,6 +206,12 @@ instance FromJSON JsonSubExpr where
       let toParse = fromJust $ H.lookup "keyValueMatch" v
       in case toParse of
            Object o -> KeyValueMatch <$> o .: "key" <*> o .: "value"
+           _        -> typeMismatch "JsonSubExpr" toParse
+
+    | isJust $ H.lookup "keyMatch" v =
+      let toParse = fromJust $ H.lookup "keyMatch" v
+      in case toParse of
+           String s -> return $ KeyMatch s
            _        -> typeMismatch "JsonSubExpr" toParse
     | isJust $ H.lookup "valueMatch" v = ValueMatch <$> v .: "valueMatch"
   parseJSON invalid = typeMismatch "JsonSubExpr" invalid
