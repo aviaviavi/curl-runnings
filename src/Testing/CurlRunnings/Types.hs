@@ -362,9 +362,12 @@ newtype CurlSuite =
   CurlSuite [CurlCase]
   deriving (Show, Generic)
 
-instance FromJSON CurlSuite
-
 instance ToJSON CurlSuite
+
+instance FromJSON CurlSuite where
+  parseJSON (Object v) = CurlSuite <$> v .: "cases"
+  parseJSON a@(Array _) = CurlSuite <$> parseJSON a
+  parseJSON invalid = typeMismatch "JsonMatcher" invalid
 
 -- | Simple predicate that checks if the result is passing
 isPassing :: CaseResult -> Bool

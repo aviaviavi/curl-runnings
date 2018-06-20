@@ -5,6 +5,7 @@ module Testing.CurlRunnings.Internal
   , makeGreen
   , tracer
   , mapRight
+  , mapLeft
   , arrayGet
   , makeLogger
   , makeUnsafeLogger
@@ -29,6 +30,10 @@ tracer a b = trace (a ++ ": " ++ show b) b
 mapRight :: (b -> c) -> Either a b -> Either a c
 mapRight f (Right v) = Right $ f v
 mapRight _ (Left v)  = Left v
+
+mapLeft :: (a -> c) -> Either a b -> Either c b
+mapLeft f (Left v) = Left $ f v
+mapLeft _ (Right v)  = Right v
 
 -- | Array indexing with negative values allowed
 arrayGet :: [a] -> Int -> a

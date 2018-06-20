@@ -24,6 +24,7 @@ import           Data.Monoid
 import qualified Data.Text                            as T
 import qualified Data.Vector                          as V
 import qualified Data.Yaml                            as Y
+import qualified Data.Yaml.Include                    as YI
 import           Network.HTTP.Conduit
 import           Network.HTTP.Simple
 import qualified Network.HTTP.Types.Header            as HTTP
@@ -42,9 +43,9 @@ decodeFile specPath = doesFileExist specPath >>= \exists ->
       "json" ->
         eitherDecode' <$> B.readFile specPath :: IO (Either String CurlSuite)
       "yaml" ->
-        Y.decodeEither <$> B8S.readFile specPath :: IO (Either String CurlSuite)
+        mapLeft show <$> YI.decodeFileEither specPath
       "yml" ->
-        Y.decodeEither <$> B8S.readFile specPath :: IO (Either String CurlSuite)
+        mapLeft show <$> YI.decodeFileEither specPath
       _ -> return . Left $ printf "Invalid spec path %s" specPath
   else return . Left $ printf "%s not found" specPath
 
