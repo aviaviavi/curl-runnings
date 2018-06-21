@@ -1,7 +1,5 @@
 ---
-# In addition to a top level array, you can specify your test cases in a top level object keyed by `cases`:
-# This allows you to add other information to your specification, like yaml directives for imports or any other data
-# you want to include.
+# use the !include <file> yaml directive for import data from other yaml files!
 include: !include ./importable.yaml
 cases:
   - name: test 1 
