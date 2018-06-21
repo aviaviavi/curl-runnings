@@ -1,0 +1,4 @@
+---
+# you can define any variables in a yaml file, which can be imported in your specs via the
+# !import <filename> directive. This is especially useful for defining aliases for data you use frequently
+some_key: &ping ping

@@ -46,40 +46,50 @@ There are few options to install:
 
 ### Writing a test specification
 
-Curl runnings tests are just data! A test spec is a top level array of test
-cases, where each item represents a single curl and set of assertions about the
-response. Write your tests specs in a yaml or json file.
+Curl runnings tests are just data! A test spec is an object containing an array
+of `cases`, where each item represents a single curl and set of assertions about
+the response. Write your tests specs in a yaml or json file. Note: the legacy
+format of a top level array of test cases is still supported, but may not be in
+future releases.
+
 
 ```yaml
 ---
 # example-test.yaml
 #
-# the top level of the file is an array of test cases
-- name: A curl runnings test case
-  url: http://your-endpoint.com/status
-  requestMethod: GET
-  # Specify the json payload we expect here
-  expectData:
-    # The 1 key in this object specifies the matcher we want
-    # to use to test the returned payload. In this case, we
-    # require the payload is exactly what we specify.
-    exactly:
-      okay: true
-      msg: 'a message'
-  # Assertions about the returned status code. Pass in
-  # an acceptable code or list of codes
-  expectStatus: 200
+# specify all your test cases as an array keys on `cases`
+cases:
+  - name: A curl runnings test case
+    url: http://your-endpoint.com/status
+    requestMethod: GET
+    # Specify the json payload we expect here
+    expectData:
+      # The 1 key in this object specifies the matcher we want
+      # to use to test the returned payload. In this case, we
+      # require the payload is exactly what we specify.
+      exactly:
+        okay: true
+        msg: 'a message'
+    # Assertions about the returned status code. Pass in
+    # an acceptable code or list of codes
+    expectStatus: 200
 
 ```
 
 See /examples for more example curl runnings specifications, which walk
-through some of the other features that can be encoded in your tests.
+through some of the other features that can be encoded in your tests such as:
+- reference data from previous responses of previous test cases
+- reference environment variables
+- various easy-to-use json matchers
+- support for importing data from other yaml files in your spec
 
 ### Running
 
 Once you've written a spec, simply run it with:
 
 ```curl-runnings -f path/to/your/spec.yaml ```
+
+(hint: try using the --verbose flag for more output)
 
 If all your tests pass, curl-runnings will cleanly exit with a 0 code. A code of
 1 will be returned if any tests failed.
