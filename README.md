@@ -48,7 +48,9 @@ There are few options to install:
 
 Curl runnings tests are just data! A test spec is an object containing an array
 of `cases`, where each item represents a single curl and set of assertions about
-the response. Write your tests specs in a yaml or json file.
+the response. Write your tests specs in a yaml or json file. Note: the legacy
+format of a top level array of test cases is still supported, but may not be in
+future releases.
 
 
 ```yaml
