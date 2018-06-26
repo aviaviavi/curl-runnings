@@ -392,7 +392,7 @@ unsafeLogger (CurlRunningsState _ _ l) = makeUnsafeLogger l
 
 -- | A single lookup operation in a json query
 data Index
-  -- | Drill into the json of a specific test case. The SUITE object is
+  -- | Drill into the json of a specific test case. The RESPONSES object is
   -- accessible as an array of values that have come back from previous test
   -- cases
   = CaseResultIndex Integer
@@ -403,7 +403,7 @@ data Index
   deriving (Show)
 
 printOriginalQuery :: Index -> String
-printOriginalQuery (CaseResultIndex t) = "SUITE[" ++ show t ++ "]"
+printOriginalQuery (CaseResultIndex t) = "RESPONSES[" ++ show t ++ "]"
 printOriginalQuery (KeyIndex key)      = "." ++ T.unpack key
 printOriginalQuery (ArrayIndex i)      = printf "[%d]" i
 
@@ -432,7 +432,7 @@ printQueryString (InterpolatedQuery raw (Query indexes)) =
   printf "%s$<%s>" raw $ concatMap show indexes
 printQueryString (NonInterpolatedQuery (Query indexes)) = printf "$<%s>" (concatMap show indexes)
 
--- | The full string in which a query appears, eg "prefix-${{SUITE[0].key.another_key[0].last_key}}"
+-- | The full string in which a query appears, eg "prefix-${{RESPONSES[0].key.another_key[0].last_key}}"
 type FullQueryText = T.Text
--- | The string for one query given the FullQueryText above, the single query text would be SUITE[0].key.another_key[0].last_key
+-- | The string for one query given the FullQueryText above, the single query text would be RESPONSES[0].key.another_key[0].last_key
 type SingleQueryText = T.Text

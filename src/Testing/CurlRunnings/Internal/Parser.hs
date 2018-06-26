@@ -5,22 +5,22 @@
 -- interpolation can be performed, where interpolated values are json quries
 -- into responses from past test cases.
 --
--- > "$<SUITE[0].key[0].another_key>"
+-- > "$<RESPONSES[0].key[0].another_key>"
 --
--- here the `SUITE` keyword references the results of previous test cases. Here, the
+-- here the `RESPONSES` keyword references the results of previous test cases. Here, the
 -- whole string is a query, so if the value referenced by this query is itself a
 -- json value, the entire value will replace this string in a json matcher.
 -- Additionally, interpolation of the form:
 --
 -- >
--- > "some text to interpolate with $<SUITE[0].key.key>"
+-- > "some text to interpolate with $<RESPONSES[0].key.key>"
 -- >
 --
 -- will substitute a string found at the specified query
 -- and subsitute the string.
 --
 -- Rules for the language are similar to JQ or regular JSON indexing rules. All
--- queries must start with a SUITE[integer] index, and be written between a
+-- queries must start with a RESPONSES[integer] index, and be written between a
 --
 -- >
 -- >  $< ... >
@@ -55,7 +55,7 @@ type Parser = Parsec Void T.Text
 parseSuiteIndex' :: Parser Index
 parseSuiteIndex' = do
   notFollowedBy gtlt
-  _ <- string "SUITE"
+  _ <- string "RESPONSES" <|> string "RESPONSES"
   (ArrayIndex i) <- arrayIndexParser
   return $ CaseResultIndex i
 

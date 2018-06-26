@@ -354,7 +354,7 @@ getValueForQuery (CurlRunningsState _ previousResults _) full@(NonInterpolatedQu
            (tail indexes)
     _ ->
       Left . QueryValidationError $
-      T.pack $ "$<> queries must start with a SUITE[index] query: " ++ show full
+      T.pack $ "$<> queries must start with a RESPONSES[index] query: " ++ show full
 getValueForQuery (CurlRunningsState env _ _) (NonInterpolatedQuery (EnvironmentVariable var)) =
   Right . String $ H.lookupDefault "" var env
 getValueForQuery state (InterpolatedQuery _ q) =
