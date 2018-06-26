@@ -30,6 +30,7 @@ main = hspec $
     parseQuery "some text before $<RESPONSES[100].key.key[0].key_with_underscores> and after" `shouldSatisfy` isRight
     parseQuery "some $<RESPONSES[100]> querires $<RESPONSES[100]>" `shouldSatisfy` isRight
     parseQuery "some $<RESPONSES[100]> querires $<RESPONSES[100]> ${SOME_ENV_VARIABLE} asdf" `shouldSatisfy` isRight
+    parseQuery "$<SUITE[0].key.key>" `shouldSatisfy` isRight -- legacy SUITE should still be supported
 
   it "should reject invalid queries" $ do
     parseQuery "$<" `shouldSatisfy` isLeft

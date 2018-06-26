@@ -22,6 +22,8 @@ cases:
         # the json results of all previous test results. otherwise, use normal json / jq syntax.
         # you can put just a bare query and subsitute any json value, or use several queries
         # combined with raw text and substitue string values
+        # NOTE - The legacy reserved variable SUITE is still supported at this time, but may not
+        # be in a future version of curl-runnings.
         ping: $<RESPONSES[0].ping>
     expectStatus: 200
 
