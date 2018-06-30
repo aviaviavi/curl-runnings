@@ -23,7 +23,6 @@ import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text                            as T
 import qualified Data.Vector                          as V
-import qualified Data.Yaml                            as Y
 import qualified Data.Yaml.Include                    as YI
 import           Network.HTTP.Conduit
 import           Network.HTTP.Simple
@@ -53,7 +52,7 @@ decodeFile specPath = doesFileExist specPath >>= \exists ->
 -- for actually curling the test case endpoint and parsing the result.
 runCase :: CurlRunningsState -> CurlCase -> IO CaseResult
 runCase state curlCase = do
-  let eInterpolatedUrl = interpolateQueryString state $ T.pack $ url curlCase
+  let eInterpolatedUrl = interpolateQueryString state $ url curlCase
       eInterpolatedHeaders =
         interpolateHeaders state $ fromMaybe (HeaderSet []) (headers curlCase)
   case (eInterpolatedUrl, eInterpolatedHeaders) of
@@ -71,9 +70,15 @@ runCase state curlCase = do
                 setRequestBodyJSON (fromMaybe emptyObject replacedJSON) .
                 setRequestHeaders (toHTTPHeaders interpolatedHeaders) $
                 initReq {method = B8S.pack . show $ requestMethod curlCase}
-          logger state DEBUG (show request)
+          logger state DEBUG (pShow request)
+          logger
+            state
+            DEBUG
+            ("Request body: " <>
+             (pShow $
+              fromMaybe emptyObject replacedJSON))
           response <- httpBS request
-          logger state DEBUG (show response)
+          logger state DEBUG (pShow response)
           returnVal <-
             (return . decode . B.fromStrict $ getResponseBody response) :: IO (Maybe Value)
           let returnCode = getResponseStatusCode response

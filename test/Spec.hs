@@ -39,6 +39,8 @@ main = hspec $
     parseQuery "$<RESPONSES[1].key[1][1] $<>>" `shouldSatisfy` isLeft
     parseQuery "$<RESPONSES[1].key[1][1]" `shouldSatisfy` isLeft
     parseQuery "$<RESPONSES[1]>.key[1][1] ${" `shouldSatisfy` isLeft
+    parseQuery "$<POOP[0].key.key>" `shouldSatisfy` isLeft
+    parseQuery "some text $<BAD_RESPONSES_REF[0].key.key>" `shouldSatisfy` isLeft
 
 testValidSpec :: String -> IO ()
 testValidSpec file = do

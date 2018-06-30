@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- | This module specifies any utilities used by this package. At this time,
 -- consider everything in this module to be private to the curl-runnings package
 module Testing.CurlRunnings.Internal
@@ -9,6 +10,7 @@ module Testing.CurlRunnings.Internal
   , arrayGet
   , makeLogger
   , makeUnsafeLogger
+  , pShow
 
   , LogLevel(..)
   , CurlRunningsLogger
@@ -16,16 +18,23 @@ module Testing.CurlRunnings.Internal
   ) where
 
 import           Control.Monad
+import           Data.Monoid
 import           Debug.Trace
+import qualified Text.Pretty.Simple as P
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
 
-makeGreen :: String -> String
-makeGreen s = "\x1B[32m" ++ s ++ "\x1B[0m"
+makeGreen :: T.Text -> T.Text
+makeGreen s = "\x1B[32m" <> s <> "\x1B[0m"
 
-makeRed :: String -> String
-makeRed s = "\x1B[31m" ++ s ++ "\x1B[0m"
+makeRed :: T.Text -> T.Text
+makeRed s = "\x1B[31m" <> s <> "\x1B[0m"
 
-tracer :: Show a => String -> a -> a
-tracer a b = trace (a ++ ": " ++ show b) b
+pShow :: Show a => a -> T.Text
+pShow = TL.toStrict . P.pShow
+
+tracer :: Show a => T.Text -> a -> a
+tracer a b = trace (T.unpack $ a <> T.pack ": " <> pShow b) b
 
 mapRight :: (b -> c) -> Either a b -> Either a c
 mapRight f (Right v) = Right $ f v
@@ -44,16 +53,16 @@ arrayGet a i
 data LogLevel = ERROR | INFO | DEBUG deriving (Show, Eq, Ord, Enum)
 
 -- | A logger that respects the verbosity level given by input args
-type CurlRunningsLogger = (LogLevel -> String -> IO ())
+type CurlRunningsLogger = (LogLevel -> T.Text -> IO ())
 
 -- | A tracer that respects the verbosity level given by input args. Logging
 -- with this calls out to Debug.trace and can be used in pure code, but be aware
 -- of the unsafe IO.
-type CurlRunningsUnsafeLogger a = (LogLevel -> String -> a -> a)
+type CurlRunningsUnsafeLogger a = (LogLevel -> T.Text -> a -> a)
 
 makeLogger :: LogLevel -> CurlRunningsLogger
 makeLogger threshold level text =
-  when (level <= threshold) $ putStrLn text
+  when (level <= threshold) $ P.pPrint text
 
 makeUnsafeLogger :: Show a => LogLevel -> CurlRunningsUnsafeLogger a
 makeUnsafeLogger threshold level text object =

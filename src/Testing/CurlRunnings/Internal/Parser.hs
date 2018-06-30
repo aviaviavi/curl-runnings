@@ -47,15 +47,28 @@ parseQuery :: FullQueryText -> Either QueryError [InterpolatedQuery]
 parseQuery q =
   let trimmed = T.strip q
   in case Text.Megaparsec.parse parseFullTextWithQuery "" trimmed of
-       Right a -> Right a
-       Left a  -> Left $ QueryParseError (T.pack $ parseErrorPretty a) q
+       Right a -> Right a >>= validateQuery
+       Left a -> Left $ QueryParseError (T.pack $ parseErrorPretty a) q
+
+-- | Once we have parsed a query successfully, ensure that it is a legal query
+validateQuery :: [InterpolatedQuery] -> Either QueryError [InterpolatedQuery]
+-- If we have a json indexing query, it needs to start by indexing the special
+-- RESPONSES array
+validateQuery q@(InterpolatedQuery _ (Query (CaseResultIndex _:_)):_) = Right q
+validateQuery q@(NonInterpolatedQuery  (Query (CaseResultIndex _:_)):_) = Right q
+-- If the RESPONSES array is not indexed, it's not valid, as we don't know which
+-- response to look at
+validateQuery (InterpolatedQuery _ (Query  _):_) = Left $ QueryValidationError "JSON interpolation must begin by indexing into RESPONSES"
+validateQuery (NonInterpolatedQuery (Query _):_) = Left $ QueryValidationError "JSON interpolation must begin by indexing into RESPONSES"
+-- Otherwise, we're good!
+validateQuery q = Right q
 
 type Parser = Parsec Void T.Text
 
 parseSuiteIndex' :: Parser Index
 parseSuiteIndex' = do
   notFollowedBy gtlt
-  _ <- string "RESPONSES" <|> string "RESPONSES"
+  _ <- string "RESPONSES" <|> string "SUITE"
   (ArrayIndex i) <- arrayIndexParser
   return $ CaseResultIndex i
 
