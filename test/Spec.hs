@@ -24,20 +24,23 @@ main = hspec $
 
   it "should parse valid queries" $ do
     parseQuery "just some text" `shouldSatisfy` isRight
-    parseQuery "$<SUITE[0].key.key>" `shouldSatisfy` isRight
-    parseQuery "$<SUITE[0].key.key[0].key_with_underscores>" `shouldSatisfy` isRight
-    parseQuery "$<SUITE[100].key.key[0].key_with_underscores>" `shouldSatisfy` isRight
-    parseQuery "some text before $<SUITE[100].key.key[0].key_with_underscores> and after" `shouldSatisfy` isRight
-    parseQuery "some $<SUITE[100]> querires $<SUITE[100]>" `shouldSatisfy` isRight
-    parseQuery "some $<SUITE[100]> querires $<SUITE[100]> ${SOME_ENV_VARIABLE} asdf" `shouldSatisfy` isRight
+    parseQuery "$<RESPONSES[0].key.key>" `shouldSatisfy` isRight
+    parseQuery "$<RESPONSES[0].key.key[0].key_with_underscores>" `shouldSatisfy` isRight
+    parseQuery "$<RESPONSES[100].key.key[0].key_with_underscores>" `shouldSatisfy` isRight
+    parseQuery "some text before $<RESPONSES[100].key.key[0].key_with_underscores> and after" `shouldSatisfy` isRight
+    parseQuery "some $<RESPONSES[100]> querires $<RESPONSES[100]>" `shouldSatisfy` isRight
+    parseQuery "some $<RESPONSES[100]> querires $<RESPONSES[100]> ${SOME_ENV_VARIABLE} asdf" `shouldSatisfy` isRight
+    parseQuery "$<SUITE[0].key.key>" `shouldSatisfy` isRight -- legacy SUITE should still be supported
 
   it "should reject invalid queries" $ do
     parseQuery "$<" `shouldSatisfy` isLeft
-    parseQuery "$<SUITE[f].key>" `shouldSatisfy` isLeft
-    parseQuery "$<SUITE[1].key[r]>" `shouldSatisfy` isLeft
-    parseQuery "$<SUITE[1].key[1][1] $<>>" `shouldSatisfy` isLeft
-    parseQuery "$<SUITE[1].key[1][1]" `shouldSatisfy` isLeft
-    parseQuery "$<SUITE[1]>.key[1][1] ${" `shouldSatisfy` isLeft
+    parseQuery "$<RESPONSES[f].key>" `shouldSatisfy` isLeft
+    parseQuery "$<RESPONSES[1].key[r]>" `shouldSatisfy` isLeft
+    parseQuery "$<RESPONSES[1].key[1][1] $<>>" `shouldSatisfy` isLeft
+    parseQuery "$<RESPONSES[1].key[1][1]" `shouldSatisfy` isLeft
+    parseQuery "$<RESPONSES[1]>.key[1][1] ${" `shouldSatisfy` isLeft
+    parseQuery "$<POOP[0].key.key>" `shouldSatisfy` isLeft
+    parseQuery "some text $<BAD_RESPONSES_REF[0].key.key>" `shouldSatisfy` isLeft
 
 testValidSpec :: String -> IO ()
 testValidSpec file = do

@@ -3,6 +3,7 @@
 
 module Main where
 
+import           Data.Monoid
 import qualified Data.Text                     as T
 import           Data.Version                  (showVersion)
 import           Paths_curl_runnings           (version)
@@ -38,10 +39,12 @@ runFile path verbosityLevel = do
     Right s -> do
       results <- runSuite s $ toLogLevel verbosityLevel
       if any isFailing results
-        then putStrLn (makeRed "Some tests failed") >> exitWith (ExitFailure 1)
-        else putStrLn $ makeGreen "All tests passed!"
-    Left messgage ->
-      putStrLn . makeRed $ "Couldn't read input json or yaml file: " ++ messgage
+        then putStrLn (T.unpack $ makeRed "Some tests failed") >>
+             exitWith (ExitFailure 1)
+        else putStrLn . T.unpack $ makeGreen "All tests passed!"
+    Left message ->
+      putStrLn . T.unpack . makeRed . T.pack $
+      "Couldn't read input json or yaml file: " <> message
 
 toLogLevel :: Verbosity -> LogLevel
 toLogLevel v = toEnum $ fromEnum v

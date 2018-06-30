@@ -18,17 +18,19 @@ cases:
     expectData:
       exactly:
         # a string can be interpolated with variables inside of a $<...>
-        # a query should start by indexing the array `SUITE` which contains
+        # a query should start by indexing the array `RESPONSES` which contains
         # the json results of all previous test results. otherwise, use normal json / jq syntax.
         # you can put just a bare query and subsitute any json value, or use several queries
         # combined with raw text and substitue string values
-        ping: $<SUITE[0].ping>
+        # NOTE - The legacy reserved variable SUITE is still supported at this time, but may not
+        # be in a future version of curl-runnings.
+        ping: $<RESPONSES[0].ping>
     expectStatus: 200
 
   - name: test will fail
     url: https://tabdextension.com/ping
     requestMethod: GET
-    expectHeaders: "ping: $<SUITE[-1].ping>; ${ping_path}: pong"
+    expectHeaders: "ping: $<RESPONSES[-1].ping>; ${ping_path}: pong"
     expectStatus: 200
 
   - name: test will fail
@@ -42,10 +44,10 @@ cases:
             value: ${ping_value}
         - keyValueMatch:
             key: msg
-            value: $<SUITE[0].msg>
+            value: $<RESPONSES[0].msg>
         # here, we are interpolating several string values into a string
-        - valueMatch: 'hello $<SUITE[0].ping> : $<SUITE[0].ping> trailing text'
-        - valueMatch: $<SUITE[0].okay>
+        - valueMatch: 'hello $<RESPONSES[0].ping> : $<RESPONSES[0].ping> trailing text'
+        - valueMatch: $<RESPONSES[0].okay>
     expectStatus: 200
 
   - name: test should pass
@@ -59,10 +61,10 @@ cases:
             value: ${ping_value}
         - keyValueMatch:
             key: msg
-            value: $<SUITE[0].msg>
+            value: $<RESPONSES[0].msg>
         # here, we are interpolating several string values into a string
-        - valueMatch: 'hello $<SUITE[0].ping> : $<SUITE[0].ping> trailing text'
-        - valueMatch: $<SUITE[0].okay>
+        - valueMatch: 'hello $<RESPONSES[0].ping> : $<RESPONSES[0].ping> trailing text'
+        - valueMatch: $<RESPONSES[0].okay>
         # use anchors from this file or an imported one. here, `ping` is an anchor defined in importable.yaml
         - valueMatch: *ping
     expectStatus: 200

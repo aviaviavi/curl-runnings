@@ -32,13 +32,12 @@ module Testing.CurlRunnings.Types
   ) where
 
 import           Data.Aeson
-import           Data.Aeson.Encode.Pretty
 import           Data.Aeson.Types
-import qualified Data.ByteString.Lazy.Char8    as B8
 import           Data.Either
 import qualified Data.HashMap.Strict           as H
 import           Data.List
 import           Data.Maybe
+import           Data.Monoid
 import qualified Data.Text                     as T
 import qualified Data.Vector                   as V
 import           GHC.Generics
@@ -127,7 +126,8 @@ instance ToJSON HeaderMatcher
 -- | Different errors relating to querying json from previous test cases
 data QueryError
   -- | The query was malformed and couldn't be parsed
-  = QueryParseError T.Text T.Text
+  = QueryParseError T.Text
+                    T.Text
   -- | The retrieved a value of the wrong type or was otherwise operating on the
   -- wrong type of thing
   | QueryTypeMismatch T.Text
@@ -147,7 +147,7 @@ instance Show QueryError where
 parseHeader :: T.Text -> Either T.Text Header
 parseHeader str =
   case map T.strip $ T.splitOn ":" str of
-    [key, val] -> Right $ Header key val
+    [key, val]   -> Right $ Header key val
     anythingElse -> Left . T.pack $ "bad header found: " ++ show anythingElse
 
 parseHeaders :: T.Text -> Either T.Text Headers
@@ -232,8 +232,8 @@ instance FromJSON StatusCodeMatcher where
 
 -- | A single curl test case, the basic foundation of a curl-runnings test.
 data CurlCase = CurlCase
-  { name          :: String -- ^ The name of the test case
-  , url           :: String -- ^ The target url to test
+  { name          :: T.Text -- ^ The name of the test case
+  , url           :: T.Text -- ^ The target url to test
   , requestMethod :: HttpMethod -- ^ Verb to use for the request
   , requestData   :: Maybe Value -- ^ Payload to send with the request, if any
   , headers       :: Maybe Headers -- ^ Headers to send with the request, if any
@@ -274,8 +274,8 @@ colorizeExpects :: String -> String
 colorizeExpects t =
   let expectedColor = makeRed "Expected:"
       actualColor = makeRed "Actual:"
-      replacedExpected = T.replace "Expected:" (T.pack expectedColor) (T.pack t)
-  in T.unpack $ T.replace "Actual:" (T.pack actualColor) replacedExpected
+      replacedExpected = T.replace "Expected:" expectedColor (T.pack t)
+  in T.unpack $ T.replace "Actual:" actualColor replacedExpected
 
 instance Show AssertionFailure where
   show (StatusFailure c receivedCode) =
@@ -283,14 +283,16 @@ instance Show AssertionFailure where
       ExactCode code ->
         colorizeExpects $
         printf
-          "Incorrect status code from %s. Expected: %s. Actual: %s"
+          "[%s] Incorrect status code from %s. Expected: %s. Actual: %s"
+          (name c)
           (url c)
           (show code)
           (show receivedCode)
       AnyCodeIn codes ->
         colorizeExpects $
         printf
-          "Incorrect status code from %s. Expected: %s. Actual: %s"
+          "[%s] Incorrect status code from %s. Expected: %s. Actual: %s"
+          (name c)
           (url c)
           (show codes)
           (show receivedCode)
@@ -299,36 +301,41 @@ instance Show AssertionFailure where
       Exactly expectedVal ->
         colorizeExpects $
         printf
-          "JSON response from %s didn't match spec. Expected: %s. Actual: %s"
+          "[%s] JSON response from %s didn't match spec. Expected: %s. Actual: %s"
+          (name curlCase)
           (url curlCase)
-          (B8.unpack (encodePretty expectedVal))
-          (B8.unpack (encodePretty receivedVal))
+          (T.unpack (pShow expectedVal))
+          (T.unpack (pShow receivedVal))
       (Contains expectedVals) ->
         colorizeExpects $
         printf
-          "JSON response from %s didn't contain the matcher. Expected: %s to each be subvalues in: %s"
+          "[%s] JSON response from %s didn't contain the matcher. Expected: %s to each be subvalues in: %s"
+          (name curlCase)
           (url curlCase)
-          (B8.unpack (encodePretty expectedVals))
-          (B8.unpack (encodePretty receivedVal))
+          (T.unpack (pShow expectedVals))
+          (T.unpack (pShow receivedVal))
       (NotContains expectedVals) ->
         colorizeExpects $
         printf
-          "JSON response from %s did contain the matcher. Expected: %s not to be subvalues in: %s"
+          "[%s] JSON response from %s did contain the matcher. Expected: %s not to be subvalues in: %s"
+          (name curlCase)
           (url curlCase)
-          (B8.unpack (encodePretty expectedVals))
-          (B8.unpack (encodePretty receivedVal))
+          (T.unpack (pShow expectedVals))
+          (T.unpack (pShow receivedVal))
       (MixedContains expectedVals) ->
         colorizeExpects $
         printf
-          "JSON response from %s didn't satisfy the matcher. Expected: %s to each be subvalues and %s not to be subvalues in: %s"
+          "[%s] JSON response from %s didn't satisfy the matcher. Expected: %s to each be subvalues and %s not to be subvalues in: %s"
+          (name curlCase)
           (url curlCase)
-          (B8.unpack (encodePretty (filter isContains expectedVals)))
-          (B8.unpack (encodePretty (filter isNotContains expectedVals)))
-          (B8.unpack (encodePretty receivedVal))
+          (T.unpack (pShow (filter isContains expectedVals)))
+          (T.unpack (pShow (filter isNotContains expectedVals)))
+          (T.unpack (pShow receivedVal))
   show (HeaderFailure curlCase expected receivedHeaders) =
     colorizeExpects $
     printf
-      "Headers from %s didn't contain expected headers. Expected: %s. Actual: %s"
+      "[%s] Headers from %s didn't contain expected headers. Expected: %s. Actual: %s"
+      (name curlCase)
       (url curlCase)
       (show expected)
       (show receivedHeaders)
@@ -349,12 +356,12 @@ data CaseResult
              [AssertionFailure]
 
 instance Show CaseResult where
-  show (CasePass c _ _) = makeGreen "[PASS] " ++ name c
+  show (CasePass c _ _) = T.unpack . makeGreen $ "[PASS] " <> name c
   show (CaseFail c _ _ failures) =
-    makeRed "[FAIL] " ++
-    name c ++
-    "\n" ++
-    concatMap ((\s -> "\nAssertion failed: " ++ s) . (++ "\n") . show) failures
+    T.unpack $ makeRed "[FAIL] " <>
+    name c <>
+    "\n" <>
+    mconcat (map ((\s -> "\nAssertion failed: " <> s) . (<> "\n") . pShow) failures)
 
 -- | A wrapper type around a set of test cases. This is the top level spec type
 -- that we parse a test spec file into
@@ -365,9 +372,9 @@ newtype CurlSuite =
 instance ToJSON CurlSuite
 
 instance FromJSON CurlSuite where
-  parseJSON (Object v) = CurlSuite <$> v .: "cases"
+  parseJSON (Object v)  = CurlSuite <$> v .: "cases"
   parseJSON a@(Array _) = CurlSuite <$> parseJSON a
-  parseJSON invalid = typeMismatch "JsonMatcher" invalid
+  parseJSON invalid     = typeMismatch "JsonMatcher" invalid
 
 -- | Simple predicate that checks if the result is passing
 isPassing :: CaseResult -> Bool
@@ -392,7 +399,7 @@ unsafeLogger (CurlRunningsState _ _ l) = makeUnsafeLogger l
 
 -- | A single lookup operation in a json query
 data Index
-  -- | Drill into the json of a specific test case. The SUITE object is
+  -- | Drill into the json of a specific test case. The RESPONSES object is
   -- accessible as an array of values that have come back from previous test
   -- cases
   = CaseResultIndex Integer
@@ -403,7 +410,7 @@ data Index
   deriving (Show)
 
 printOriginalQuery :: Index -> String
-printOriginalQuery (CaseResultIndex t) = "SUITE[" ++ show t ++ "]"
+printOriginalQuery (CaseResultIndex t) = "RESPONSES[" ++ show t ++ "]"
 printOriginalQuery (KeyIndex key)      = "." ++ T.unpack key
 printOriginalQuery (ArrayIndex i)      = printf "[%d]" i
 
@@ -432,7 +439,7 @@ printQueryString (InterpolatedQuery raw (Query indexes)) =
   printf "%s$<%s>" raw $ concatMap show indexes
 printQueryString (NonInterpolatedQuery (Query indexes)) = printf "$<%s>" (concatMap show indexes)
 
--- | The full string in which a query appears, eg "prefix-${{SUITE[0].key.another_key[0].last_key}}"
+-- | The full string in which a query appears, eg "prefix-${{RESPONSES[0].key.another_key[0].last_key}}"
 type FullQueryText = T.Text
--- | The string for one query given the FullQueryText above, the single query text would be SUITE[0].key.another_key[0].last_key
+-- | The string for one query given the FullQueryText above, the single query text would be RESPONSES[0].key.another_key[0].last_key
 type SingleQueryText = T.Text
