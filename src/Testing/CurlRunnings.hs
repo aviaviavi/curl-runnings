@@ -345,8 +345,8 @@ getValueForQuery (CurlRunningsState _ previousResults _) full@(NonInterpolatedQu
                 NullPointer
                   (T.pack $ show full)
                   "No data was returned from this case"
-      in foldr
-           (\index eitherVal ->
+      in foldl
+           (\eitherVal index ->
               case (eitherVal, index) of
                 (Left l, _) -> Left l
                 (Right (Object o), KeyIndex k) ->
