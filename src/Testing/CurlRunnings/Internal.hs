@@ -48,7 +48,7 @@ mapLeft _ (Right v)  = Right v
 arrayGet :: [a] -> Int -> a
 arrayGet a i
   | i >= 0 = a !! i
-  | otherwise = reverse a !! (-i)
+  | otherwise = a !! (length a + i)
 
 data LogLevel = ERROR | INFO | DEBUG deriving (Show, Eq, Ord, Enum)
 
