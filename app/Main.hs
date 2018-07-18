@@ -17,27 +17,28 @@ import           Testing.CurlRunnings.Types
 -- | Command line flags
 data CurlRunnings = CurlRunnings
   { file :: FilePath
+  , grep :: Maybe T.Text
   } deriving (Show, Data, Typeable, Eq)
 
 -- | cmdargs object
 argParser :: CurlRunnings
 argParser =
-  CurlRunnings {file = def &= typFile &= help "File to run"} &=
+  CurlRunnings {file = def &= typFile &= help "File to run", grep = def &= help "Regex to filter test cases by name"} &=
   summary ("curl-runnings " ++ showVersion version) &=
   program "curl-runnings" &=
   verbosity &=
   help "Use the --file or -f flag to specify an intput file spec to run"
 
-runFile :: FilePath -> Verbosity -> IO ()
-runFile "" _ =
+runFile :: FilePath -> Verbosity -> Maybe T.Text -> IO ()
+runFile "" _ _ =
   putStrLn
     "Please specify an input file with the --file (-f) flag or use --help for more information"
-runFile path verbosityLevel = do
+runFile path verbosityLevel regexp = do
   home <- getEnv "HOME"
   suite <- decodeFile . T.unpack $ T.replace "~" (T.pack home) (T.pack path)
   case suite of
     Right s -> do
-      results <- runSuite s $ toLogLevel verbosityLevel
+      results <- runSuite (s { suiteCaseFilter = regexp }) $ toLogLevel verbosityLevel
       if any isFailing results
         then putStrLn (T.unpack $ makeRed "Some tests failed") >>
              exitWith (ExitFailure 1)
@@ -53,4 +54,4 @@ main :: IO ()
 main = do
   userArgs <- cmdArgs argParser
   verbosityLevel <- getVerbosity
-  runFile (file userArgs) verbosityLevel
+  runFile (file userArgs) verbosityLevel (grep userArgs)

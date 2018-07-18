@@ -4,11 +4,10 @@
 -- | curl-runnings is a framework for writing declaratively writing curl based tests for your API's.
 -- Write your test specifications with yaml or json, and you're done!
 module Testing.CurlRunnings
-  (
-      runCase
-    , runSuite
-    , decodeFile
-    ) where
+  ( runCase
+  , runSuite
+  , decodeFile
+  ) where
 
 import           Control.Monad
 import           Data.Aeson
@@ -33,20 +32,20 @@ import           Testing.CurlRunnings.Internal
 import           Testing.CurlRunnings.Internal.Parser
 import           Testing.CurlRunnings.Types
 import           Text.Printf
+import           Text.Regex.Posix
 
 -- | decode a json or yaml file into a suite object
 decodeFile :: FilePath -> IO (Either String CurlSuite)
-decodeFile specPath = doesFileExist specPath >>= \exists ->
-  if exists then
-    case last $ T.splitOn "." (T.pack specPath) of
-      "json" ->
-        eitherDecode' <$> B.readFile specPath :: IO (Either String CurlSuite)
-      "yaml" ->
-        mapLeft show <$> YI.decodeFileEither specPath
-      "yml" ->
-        mapLeft show <$> YI.decodeFileEither specPath
-      _ -> return . Left $ printf "Invalid spec path %s" specPath
-  else return . Left $ printf "%s not found" specPath
+decodeFile specPath =
+  doesFileExist specPath >>= \exists ->
+    if exists
+      then case last $ T.splitOn "." (T.pack specPath) of
+             "json" ->
+               eitherDecode' <$> B.readFile specPath :: IO (Either String CurlSuite)
+             "yaml" -> mapLeft show <$> YI.decodeFileEither specPath
+             "yml" -> mapLeft show <$> YI.decodeFileEither specPath
+             _ -> return . Left $ printf "Invalid spec path %s" specPath
+      else return . Left $ printf "%s not found" specPath
 
 -- | Run a single test case, and returns the result. IO is needed here since this method is responsible
 -- for actually curling the test case endpoint and parsing the result.
@@ -74,9 +73,7 @@ runCase state curlCase = do
           logger
             state
             DEBUG
-            ("Request body: " <>
-             (pShow $
-              fromMaybe emptyObject replacedJSON))
+            ("Request body: " <> (pShow $ fromMaybe emptyObject replacedJSON))
           response <- httpBS request
           logger state DEBUG (pShow response)
           returnVal <-
@@ -97,7 +94,8 @@ runCase state curlCase = do
               failures ->
                 CaseFail curlCase (Just receivedHeaders) returnVal failures
 
-checkHeaders :: CurlRunningsState -> CurlCase -> Headers -> Maybe AssertionFailure
+checkHeaders ::
+     CurlRunningsState -> CurlCase -> Headers -> Maybe AssertionFailure
 checkHeaders _ (CurlCase _ _ _ _ _ _ _ Nothing) _ = Nothing
 checkHeaders state curlCase@(CurlCase _ _ _ _ _ _ _ (Just (HeaderMatcher m))) receivedHeaders =
   let interpolatedHeaders = mapM (interpolatePartialHeader state) m
@@ -116,7 +114,10 @@ checkHeaders state curlCase@(CurlCase _ _ _ _ _ _ _ (Just (HeaderMatcher m))) re
                      (HeaderMatcher headerList)
                      receivedHeaders
 
-interpolatePartialHeader :: CurlRunningsState -> PartialHeaderMatcher -> Either QueryError PartialHeaderMatcher
+interpolatePartialHeader ::
+     CurlRunningsState
+  -> PartialHeaderMatcher
+  -> Either QueryError PartialHeaderMatcher
 interpolatePartialHeader state (PartialHeaderMatcher k v) =
   let k' = interpolateQueryString state <$> k
       v' = interpolateQueryString state <$> v
@@ -163,77 +164,93 @@ printR x = print x >> return x
 
 -- | Runs the test cases in order and stop when an error is hit. Returns all the results
 runSuite :: CurlSuite -> LogLevel -> IO [CaseResult]
-runSuite (CurlSuite cases) logLevel = do
+runSuite (CurlSuite cases filterRegex) logLevel = do
   fullEnv <- getEnvironment
   let envMap = H.fromList $ map (\(x, y) -> (T.pack x, T.pack y)) fullEnv
+      filterNameByRegexp curlCase =
+        maybe
+          True
+          (\regexp -> T.unpack (name curlCase) =~ T.unpack regexp :: Bool)
+          filterRegex
   foldM
     (\prevResults curlCase ->
        case safeLast prevResults of
          Just CaseFail {} -> return prevResults
          Just CasePass {} -> do
-           result <- runCase (CurlRunningsState envMap prevResults logLevel) curlCase >>= printR
+           result <-
+             runCase (CurlRunningsState envMap prevResults logLevel) curlCase >>=
+             printR
            return $ prevResults ++ [result]
          Nothing -> do
-           result <- runCase (CurlRunningsState envMap [] logLevel) curlCase >>= printR
+           result <-
+             runCase (CurlRunningsState envMap [] logLevel) curlCase >>= printR
            return [result])
     []
-    cases
+    (filter filterNameByRegexp cases)
 
 -- | Check if the retrieved value fail's the case's assertion
-checkBody :: CurlRunningsState -> CurlCase -> Maybe Value -> Maybe AssertionFailure
+checkBody ::
+     CurlRunningsState -> CurlCase -> Maybe Value -> Maybe AssertionFailure
 -- | We are looking for an exact payload match, and we have a payload to check
 checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Exactly expectedValue)) _ _) (Just receivedBody) =
   case runReplacements state expectedValue of
     (Left err) -> Just $ QueryFailure curlCase err
     (Right interpolated) ->
-      if (unsafeLogger state DEBUG "exact body matcher" interpolated) /= receivedBody
+      if (unsafeLogger state DEBUG "exact body matcher" interpolated) /=
+         receivedBody
         then Just $
              DataFailure
                (curlCase {expectData = Just $ Exactly interpolated})
                (Exactly interpolated)
                (Just receivedBody)
         else Nothing
-
 -- | We are checking a list of expected subvalues, and we have a payload to check
 checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Contains subexprs)) _ _) (Just receivedBody) =
   case runReplacementsOnSubvalues state subexprs of
     Left f -> Just $ QueryFailure curlCase f
     Right updatedMatcher ->
-      if jsonContainsAll receivedBody (unsafeLogger state DEBUG "partial json body matcher" updatedMatcher)
+      if jsonContainsAll
+           receivedBody
+           (unsafeLogger state DEBUG "partial json body matcher" updatedMatcher)
         then Nothing
         else Just $
              DataFailure curlCase (Contains updatedMatcher) (Just receivedBody)
-
 -- | We are checking a list of expected absent subvalues, and we have a payload to check
 checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (NotContains subexprs)) _ _) (Just receivedBody) =
   case runReplacementsOnSubvalues state subexprs of
     Left f -> Just $ QueryFailure curlCase f
     Right updatedMatcher ->
-      if jsonContainsAny receivedBody (unsafeLogger state DEBUG "partial json body matcher" updatedMatcher)
+      if jsonContainsAny
+           receivedBody
+           (unsafeLogger state DEBUG "partial json body matcher" updatedMatcher)
         then Just $
-             DataFailure curlCase (NotContains updatedMatcher) (Just receivedBody)
+             DataFailure
+               curlCase
+               (NotContains updatedMatcher)
+               (Just receivedBody)
         else Nothing
-
 -- | We are checking for both contains and notContains vals, and we have a payload to check
 checkBody state curlCase@(CurlCase _ _ _ _ _ (Just m@(MixedContains subexprs)) _ _) receivedBody =
-  let failure = join $
+  let failure =
+        join $
         find
           isJust
           (map
-            (\subexpr ->
-                checkBody state curlCase {expectData = Just subexpr} receivedBody)
-            subexprs)
-   in
-    fmap (\_ ->  DataFailure curlCase m receivedBody ) failure
-
+             (\subexpr ->
+                checkBody
+                  state
+                  curlCase {expectData = Just subexpr}
+                  receivedBody)
+             subexprs)
+  in fmap (\_ -> DataFailure curlCase m receivedBody) failure
 -- | We expected a body but didn't get one
 checkBody _ curlCase@(CurlCase _ _ _ _ _ (Just anything) _ _) Nothing =
   Just $ DataFailure curlCase anything Nothing
-
 -- | No assertions on the body
 checkBody _ (CurlCase _ _ _ _ _ Nothing _ _) _ = Nothing
 
-runReplacementsOnSubvalues :: CurlRunningsState -> [JsonSubExpr] -> Either QueryError [JsonSubExpr]
+runReplacementsOnSubvalues ::
+     CurlRunningsState -> [JsonSubExpr] -> Either QueryError [JsonSubExpr]
 runReplacementsOnSubvalues state =
   mapM
     (\expr ->
@@ -296,7 +313,8 @@ runReplacements _ s@(String "") = Right s
 runReplacements state (String s) =
   case parseQuery s of
     Right [LiteralText t] -> Right $ String t
-    Right [q@(InterpolatedQuery _ _)] -> getStringValueForQuery state q >>= (Right . String)
+    Right [q@(InterpolatedQuery _ _)] ->
+      getStringValueForQuery state q >>= (Right . String)
     Right [q@(NonInterpolatedQuery _)] -> getValueForQuery state q
     Right _ -> mapRight String $ interpolateQueryString state s
     Left parseErr -> Left parseErr
@@ -304,7 +322,8 @@ runReplacements _ valToUpdate = Right valToUpdate
 
 -- | Given a query string, return some text with interpolated values. Type
 -- errors will be returned if queries don't resolve to strings
-interpolateQueryString :: CurlRunningsState -> FullQueryText -> Either QueryError T.Text
+interpolateQueryString ::
+     CurlRunningsState -> FullQueryText -> Either QueryError T.Text
 interpolateQueryString state query =
   let parsedQuery = parseQuery query
   in case parsedQuery of
@@ -318,7 +337,8 @@ interpolateQueryString state query =
          in fromMaybe (Right $ foldr (<>) (T.pack "") goodLookups) failure
 
 -- | Lookup the text at the specified query
-getStringValueForQuery :: CurlRunningsState -> InterpolatedQuery -> Either QueryError T.Text
+getStringValueForQuery ::
+     CurlRunningsState -> InterpolatedQuery -> Either QueryError T.Text
 getStringValueForQuery _ (LiteralText rawText) = Right rawText
 getStringValueForQuery state (NonInterpolatedQuery q) =
   getStringValueForQuery state $ InterpolatedQuery "" q
@@ -331,35 +351,52 @@ getStringValueForQuery (CurlRunningsState env _ _) (InterpolatedQuery rawText (E
   Right $ rawText <> H.lookupDefault "" v env
 
 -- | Lookup the value for the specified query
-getValueForQuery :: CurlRunningsState -> InterpolatedQuery -> Either QueryError Value
+getValueForQuery ::
+     CurlRunningsState -> InterpolatedQuery -> Either QueryError Value
 getValueForQuery _ (LiteralText rawText) = Right $ String rawText
 getValueForQuery (CurlRunningsState _ previousResults _) full@(NonInterpolatedQuery (Query indexes)) =
   case head indexes of
     (CaseResultIndex i) ->
-      let (CasePass _ _ returnedJSON) = arrayGet previousResults $ fromInteger i
-          jsonToIndex =
-            case returnedJSON of
-              Just v -> Right v
-              Nothing ->
-                Left $
-                NullPointer
-                  (T.pack $ show full)
-                  "No data was returned from this case"
-      in foldl
-           (\eitherVal index ->
-              case (eitherVal, index) of
-                (Left l, _) -> Left l
-                (Right (Object o), KeyIndex k) ->
-                  Right $ H.lookupDefault Null k o
-                (Right (Array a), ArrayIndex i') -> Right $ arrayGet (V.toList a) $ fromInteger i'
-                (Right Null, q) ->
-                  Left $ NullPointer (T.pack $ show full) (T.pack $ show q)
-                (Right o, _) -> Left $ QueryTypeMismatch (T.pack $ show index) o)
-           jsonToIndex
-           (tail indexes)
+      let maybeCase = arrayGet previousResults $ fromInteger i
+      in if isJust maybeCase
+           then let (CasePass _ _ returnedJSON) = fromJust maybeCase
+                    jsonToIndex =
+                      case returnedJSON of
+                        Just v -> Right v
+                        Nothing ->
+                          Left $
+                          NullPointer
+                            (T.pack $ show full)
+                            "No data was returned from this case"
+                in foldl
+                     (\eitherVal index ->
+                        case (eitherVal, index) of
+                          (Left l, _) -> Left l
+                          (Right (Object o), KeyIndex k) ->
+                            Right $ H.lookupDefault Null k o
+                          (Right (Array a), ArrayIndex i') ->
+                            maybe
+                              (Left $
+                               NullPointer (T.pack $ show full) $
+                               "Array index not found: " <> T.pack (show i'))
+                              Right
+                              (arrayGet (V.toList a) $ fromInteger i')
+                          (Right Null, q) ->
+                            Left $
+                            NullPointer (T.pack $ show full) (T.pack $ show q)
+                          (Right o, _) ->
+                            Left $ QueryTypeMismatch (T.pack $ show index) o)
+                     jsonToIndex
+                     (tail indexes)
+           else Left $
+                NullPointer (T.pack $ show full) $
+                "Attempted to index into previous a test case that didn't exist: " <>
+                T.pack (show i)
     _ ->
       Left . QueryValidationError $
-      T.pack $ "$<> queries must start with a RESPONSES[index] query: " ++ show full
+      T.pack $
+      "'$< ... >' queries must start with a RESPONSES[index] query: " ++
+      show full
 getValueForQuery (CurlRunningsState env _ _) (NonInterpolatedQuery (EnvironmentVariable var)) =
   Right . String $ H.lookupDefault "" var env
 getValueForQuery state (InterpolatedQuery _ q) =
@@ -369,19 +406,19 @@ getValueForQuery state (InterpolatedQuery _ q) =
     Right v -> Left $ QueryTypeMismatch (T.pack "Expected a string") v
     Left l -> Left l
 
-jsonContains :: ((JsonSubExpr -> Bool) -> [JsonSubExpr] -> Bool)
-                  -> Value -> [JsonSubExpr] -> Bool
+jsonContains ::
+     ((JsonSubExpr -> Bool) -> [JsonSubExpr] -> Bool)
+  -> Value
+  -> [JsonSubExpr]
+  -> Bool
 jsonContains f jsonValue =
-  let
-    traversedValue = traverseValue jsonValue
-  in
-  f $ \match ->
-    case match of
-      ValueMatch subval -> subval `elem` traversedValue
-      KeyMatch key ->
-        any (`containsKey` key) traversedValue
-      KeyValueMatch key subval ->
-        any (\o -> containsKeyVal o key subval) traversedValue
+  let traversedValue = traverseValue jsonValue
+  in f $ \match ->
+       case match of
+         ValueMatch subval -> subval `elem` traversedValue
+         KeyMatch key -> any (`containsKey` key) traversedValue
+         KeyValueMatch key subval ->
+           any (\o -> containsKeyVal o key subval) traversedValue
 
 -- | Does the json value contain all of these sub-values?
 jsonContainsAll :: Value -> [JsonSubExpr] -> Bool
@@ -393,15 +430,17 @@ jsonContainsAny = jsonContains any
 
 -- | Does the json value contain the given key value pair?
 containsKeyVal :: Value -> T.Text -> Value -> Bool
-containsKeyVal jsonValue key val = case jsonValue of
-  Object o -> H.lookup key o == Just val
-  _        -> False
+containsKeyVal jsonValue key val =
+  case jsonValue of
+    Object o -> H.lookup key o == Just val
+    _        -> False
 
 -- | Does the json value contain the given key value pair?
 containsKey :: Value -> T.Text -> Bool
-containsKey jsonValue key = case jsonValue of
-  Object o -> isJust $ H.lookup key o
-  _        -> False
+containsKey jsonValue key =
+  case jsonValue of
+    Object o -> isJust $ H.lookup key o
+    _        -> False
 
 -- | Fully traverse the json and return a list of all the values
 traverseValue :: Value -> [Value]
@@ -435,7 +474,8 @@ fromHTTPHeader (a, b) =
 
 -- | Utility conversion from an HTTP header to a CurlRunnings header.
 toHTTPHeader :: Header -> HTTP.Header
-toHTTPHeader (Header a b) = (CI.mk . B8S.pack $ T.unpack a, B8S.pack $ T.unpack b)
+toHTTPHeader (Header a b) =
+  (CI.mk . B8S.pack $ T.unpack a, B8S.pack $ T.unpack b)
 
 -- | Utility conversion from CurlRunnings headers to HTTP headers.
 toHTTPHeaders :: Headers -> HTTP.RequestHeaders

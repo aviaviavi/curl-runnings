@@ -94,6 +94,10 @@ Once you've written a spec, simply run it with:
 If all your tests pass, curl-runnings will cleanly exit with a 0 code. A code of
 1 will be returned if any tests failed.
 
+You can also select specific test cases by filtering via regex by using the
+`--grep` flag. Just make sure your case isn't referencing data from previous
+examples that won't get run!
+
 For more info:
 
 ```curl-runnings --help ```
@@ -102,17 +106,3 @@ For more info:
 
 Contributions in any form are welcome and encouraged. Don't be shy! :D
 
-### Roadmap
-
-- [x] Json specifications for tests
-- [x] Yaml specifications for tests
-- [ ] Dhall specifications for tests
-- [ ] More specification features
-  - [x] Reference values from previous json responses in matchers
-  - [x] Environment variable interpolation
-  - [ ] Call out to arbitrary shell commands in and between test cases
-  - [ ] Timeouts
-  - [ ] Support for non-json content type
-  - [ ] Retry logic
-- [ ] A DSL for writing test specs
-  
