@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Main where
 
@@ -6,6 +6,7 @@ import           Data.Either
 import           System.Directory
 import           Test.Hspec
 import           Testing.CurlRunnings
+import           Testing.CurlRunnings.Internal
 import           Testing.CurlRunnings.Internal.Parser
 
 main :: IO ()
@@ -41,6 +42,21 @@ main = hspec $
     parseQuery "$<RESPONSES[1]>.key[1][1] ${" `shouldSatisfy` isLeft
     parseQuery "$<POOP[0].key.key>" `shouldSatisfy` isLeft
     parseQuery "some text $<BAD_RESPONSES_REF[0].key.key>" `shouldSatisfy` isLeft
+
+  it "arrayGet should handle positive and negative indexes correctly" $ do
+    let a = [1, 2, 3]
+        b = [] :: [Int]
+    (arrayGet a 0) `shouldBe` Just 1
+    (arrayGet a 1) `shouldBe` Just 2
+    (arrayGet a 2) `shouldBe` Just 3
+    (arrayGet a (-1)) `shouldBe` Just 3
+    (arrayGet a (-2)) `shouldBe` Just 2
+    (arrayGet a (-3)) `shouldBe` Just 1
+    (arrayGet a (-4)) `shouldBe` Nothing
+    (arrayGet a 3) `shouldBe` Nothing
+    (arrayGet b 0) `shouldBe` Nothing
+    (arrayGet b 1) `shouldBe` Nothing
+    (arrayGet b (-1)) `shouldBe` Nothing
 
 testValidSpec :: String -> IO ()
 testValidSpec file = do

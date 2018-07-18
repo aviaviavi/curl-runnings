@@ -134,9 +134,9 @@ data QueryError
                       Value
   -- | The query was parse-able
   | QueryValidationError T.Text
-  -- | Tried to access a value in a null object
-  | NullPointer T.Text
-                T.Text
+  -- | Tried to access a value in a null object.
+  | NullPointer T.Text -- full query
+                T.Text -- message
 
 instance Show QueryError where
   show (QueryParseError t q) = printf "error parsing query %s: %s" q $ T.unpack t
@@ -207,7 +207,6 @@ instance FromJSON JsonSubExpr where
       in case toParse of
            Object o -> KeyValueMatch <$> o .: "key" <*> o .: "value"
            _        -> typeMismatch "JsonSubExpr" toParse
-
     | isJust $ H.lookup "keyMatch" v =
       let toParse = fromJust $ H.lookup "keyMatch" v
       in case toParse of
@@ -365,15 +364,19 @@ instance Show CaseResult where
 
 -- | A wrapper type around a set of test cases. This is the top level spec type
 -- that we parse a test spec file into
-newtype CurlSuite =
-  CurlSuite [CurlCase]
-  deriving (Show, Generic)
+data CurlSuite = CurlSuite
+  { suiteCases      :: [CurlCase]
+  , suiteCaseFilter :: Maybe T.Text
+  } deriving (Show, Generic)
+
+noFilterSuite :: [CurlCase] -> CurlSuite
+noFilterSuite = flip CurlSuite Nothing
 
 instance ToJSON CurlSuite
 
 instance FromJSON CurlSuite where
-  parseJSON (Object v)  = CurlSuite <$> v .: "cases"
-  parseJSON a@(Array _) = CurlSuite <$> parseJSON a
+  parseJSON (Object v)  = noFilterSuite <$> v .: "cases"
+  parseJSON a@(Array _) = noFilterSuite <$> parseJSON a
   parseJSON invalid     = typeMismatch "JsonMatcher" invalid
 
 -- | Simple predicate that checks if the result is passing
