@@ -44,8 +44,8 @@ runFile path verbosityLevel regexp = do
              exitWith (ExitFailure 1)
         else putStrLn . T.unpack $ makeGreen "All tests passed!"
     Left message ->
-      putStrLn . T.unpack . makeRed . T.pack $
-      "Couldn't read input json or yaml file: " <> message
+      (putStrLn . T.unpack . makeRed . T.pack $
+      "Couldn't read input json or yaml file: " <> message) >> exitWith (ExitFailure 1)
 
 toLogLevel :: Verbosity -> LogLevel
 toLogLevel v = toEnum $ fromEnum v
