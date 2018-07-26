@@ -6,10 +6,12 @@ module Main where
 
 import qualified Codec.Archive.Tar             as Tar
 import qualified Codec.Compression.GZip        as GZ
+import           Control.Monad
 import           Data.Aeson
 import qualified Data.ByteString.Lazy          as B
 import           Data.List
 import qualified Data.List.NonEmpty            as NE
+import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text                     as T
 import           Data.Version                  (showVersion)
@@ -48,19 +50,23 @@ argParser =
 
 -- | A single release asset in a github release. Eg curl-runnings-${version}.tar.gz
 data GithubReleaseAsset = GithubReleaseAsset
-  { name                 :: String
-  , browser_download_url :: String -- snake case because that's what we get back from github
+  { name                 :: T.Text
+  , browser_download_url :: T.Text -- snake case because that's what we get back from github
   } deriving (Show, Generic)
 
 instance FromJSON GithubReleaseAsset
 
 -- | The json response we expect from github when we check for the latest release
-data GithubReleaseResponse = GithubReleaseResponse
+data GithubRelease = GithubRelease
   { assets   :: NE.NonEmpty GithubReleaseAsset
-  , tag_name :: String -- snake case because that's what we get back from github
+  , tag_name :: T.Text -- snake case because that's what we get back from github
   } deriving (Show, Generic)
+instance FromJSON GithubRelease
 
-instance FromJSON GithubReleaseResponse
+newtype GithubReleasesResponse =
+  GithubReleasesResponse (NE.NonEmpty GithubRelease)
+  deriving (Show, Generic)
+instance FromJSON GithubReleasesResponse
 
 setGithubReqHeaders :: Request -> Request
 setGithubReqHeaders = setRequestHeaders [("User-Agent", "aviaviavi")]
@@ -90,15 +96,24 @@ runFile path verbosityLevel regexp = do
 filterAsset :: NE.NonEmpty GithubReleaseAsset -> Maybe GithubReleaseAsset
 filterAsset assetList = find filterFn $ NE.toList assetList
   where
-    filterFn' a = "mac" `isInfixOf` Main.name a
+    filterFn' a = "mac" `T.isInfixOf` Main.name a
     filterFn =
       if os == "darwin"
         then filterFn'
         else not . filterFn'
 
+findAssetFromReleases :: GithubReleasesResponse -> Maybe GithubReleaseAsset
+findAssetFromReleases (GithubReleasesResponse releases) =
+  let assetList = map (filterAsset . assets) $ NE.toList releases
+  in join $ find isJust assetList
+
 -- | We'll upgrade any time the latest version is different from what we have
-shouldUpgrade :: GithubReleaseResponse -> Bool
-shouldUpgrade response = showVersion version /= tag_name response
+shouldUpgrade :: GithubReleaseAsset -> Bool
+shouldUpgrade asset =
+  let assetNameTokens = (T.splitOn "-" (Main.name asset))
+  in if length assetNameTokens /= 4
+       then False
+       else assetNameTokens !! 2 /= (T.pack $ showVersion version)
 
 -- | If conditions are met, download the appropriate tarball from the latest
 -- github release, extract and copy to /usr/local/bin
@@ -106,26 +121,26 @@ upgradeCurlRunnings :: IO ()
 upgradeCurlRunnings =
   let tmpArchive = "/tmp/curl-runnings-latest.tar.gz"
       tmpArchiveExtracedFolder = "/tmp/curl-runnings-latest"
-      tmpExtractedBin = tmpArchiveExtracedFolder ++ "curl-runnings"
+      tmpExtractedBin = tmpArchiveExtracedFolder ++ "/curl-runnings"
       installPath = "/usr/local/bin/curl-runnings"
   in do req <-
           parseRequest
-            "https://api.github.com/repos/aviaviavi/curl-runnings/releases/latest"
+            "https://api.github.com/repos/aviaviavi/curl-runnings/releases"
         req' <- return $ setGithubReqHeaders req
         resp <- httpBS req'
         decoded <- return $ eitherDecode' . B.fromStrict $ getResponseBody resp
         case decoded of
           Right r ->
-            if shouldUpgrade r
-              then let asset = filterAsset $ assets r
-                   in case asset of
+            let asset = findAssetFromReleases r
+            in if maybe False shouldUpgrade asset
+                 then case asset of
                         (Just a) -> do
                           let downloadUrl = browser_download_url a
                           putStrLn
                             "Getting the latest version of curl-runnings..."
                           downloadResp <-
                             httpBS . setGithubReqHeaders =<<
-                            parseRequest downloadUrl
+                            (parseRequest $ T.unpack downloadUrl)
                           _ <-
                             B.writeFile
                               tmpArchive
@@ -154,9 +169,9 @@ upgradeCurlRunnings =
                             "If the issue persists, please open an issue at https://github.com/aviaviavi/curl-runnings/issues."
                           exitWith (ExitFailure 1)
               -- No upgrade required
-              else putStrLn $
-                   "curl-runnings is already at the newest version: " ++
-                   showVersion version ++ ". Nothing to upgrade."
+                 else putStrLn $
+                      "curl-runnings is already at the newest version: " ++
+                      showVersion version ++ ". Nothing to upgrade."
           -- Coudn't decode github response
           Left err -> do
             putStrLn . T.unpack $ makeRed "Error upgrading curl-runnings"
