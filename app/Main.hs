@@ -58,7 +58,7 @@ instance FromJSON GithubReleaseAsset
 
 -- | The json response we expect from github when we check for the latest release
 data GithubRelease = GithubRelease
-  { assets   :: NE.NonEmpty GithubReleaseAsset
+  { assets   :: [GithubReleaseAsset]
   , tag_name :: T.Text -- snake case because that's what we get back from github
   } deriving (Show, Generic)
 instance FromJSON GithubRelease
@@ -94,8 +94,8 @@ runFile path verbosityLevel regexp = do
 
 -- | If we're on mac, we want a *-mac tarball from the releases page. If we're on linux we
 -- do not
-filterAsset :: NE.NonEmpty GithubReleaseAsset -> Maybe GithubReleaseAsset
-filterAsset assetList = find filterFn $ NE.toList assetList
+filterAsset :: [GithubReleaseAsset] -> Maybe GithubReleaseAsset
+filterAsset assetList = find filterFn assetList
   where
     filterFn' a = "mac" `T.isInfixOf` Main.name a
     filterFn =
