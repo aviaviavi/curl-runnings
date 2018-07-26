@@ -68,6 +68,7 @@ newtype GithubReleasesResponse =
   deriving (Show, Generic)
 instance FromJSON GithubReleasesResponse
 
+-- | Github requires a user agent, preferably with a username
 setGithubReqHeaders :: Request -> Request
 setGithubReqHeaders = setRequestHeaders [("User-Agent", "aviaviavi")]
 
@@ -102,6 +103,8 @@ filterAsset assetList = find filterFn $ NE.toList assetList
         then filterFn'
         else not . filterFn'
 
+-- | From the list of releases on github, find the newest release that has a binary
+-- tarball for the platform we're on.
 findAssetFromReleases :: GithubReleasesResponse -> Maybe GithubReleaseAsset
 findAssetFromReleases (GithubReleasesResponse releases) =
   let assetList = map (filterAsset . assets) $ NE.toList releases
@@ -110,10 +113,10 @@ findAssetFromReleases (GithubReleasesResponse releases) =
 -- | We'll upgrade any time the latest version is different from what we have
 shouldUpgrade :: GithubReleaseAsset -> Bool
 shouldUpgrade asset =
-  let assetNameTokens = (T.splitOn "-" (Main.name asset))
+  let assetNameTokens = T.splitOn "-" (Main.name asset)
   in if length assetNameTokens /= 4
        then False
-       else assetNameTokens !! 2 /= (T.pack $ showVersion version)
+       else assetNameTokens !! 2 /= T.pack (showVersion version)
 
 -- | If conditions are met, download the appropriate tarball from the latest
 -- github release, extract and copy to /usr/local/bin
