@@ -114,7 +114,7 @@ findAssetFromReleases (GithubReleasesResponse releases) =
 shouldUpgrade :: GithubReleaseAsset -> Bool
 shouldUpgrade asset =
   let assetNameTokens = T.splitOn "-" (Main.name asset)
-  in if length assetNameTokens /= 4
+  in if length assetNameTokens `notElem` [3, 4]
        then False
        else assetNameTokens !! 2 /= T.pack (showVersion version)
 
