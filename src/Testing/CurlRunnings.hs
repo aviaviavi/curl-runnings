@@ -9,6 +9,7 @@ module Testing.CurlRunnings
   , decodeFile
   ) where
 
+import           Control.Exception
 import           Control.Monad
 import           Data.Aeson
 import           Data.Aeson.Types
@@ -75,9 +76,28 @@ runCase state curlCase = do
             DEBUG
             ("Request body: " <> (pShow $ fromMaybe emptyObject replacedJSON))
           response <- httpBS request
-          logger state DEBUG (pShow response)
+          -- If the response is just returning bytes, we won't print them
+          let responseHeaderValues = map snd (getResponseHeaders response)
+          if "application/octet-stream" `notElem` responseHeaderValues &&
+             "application/vnd.apple.pkpass" `notElem` responseHeaderValues
+            then catch
+                   (logger state DEBUG (pShow response))
+                   (\(e :: IOException) ->
+                      logger state ERROR ("Error logging response: " <> pShow e))
+              -- TODO: we should log as much info as possible without printing the raw body
+            else logger
+                   state
+                   DEBUG
+                   "Response output supressed (returned content-type was bytes)"
           returnVal <-
-            (return . decode . B.fromStrict $ getResponseBody response) :: IO (Maybe Value)
+            catch
+              ((return . decode . B.fromStrict $ getResponseBody response) :: IO (Maybe Value))
+              (\(e :: IOException) ->
+                 logger
+                   state
+                   ERROR
+                   ("Error decoding response into json: " <> pShow e) >>
+                 return (Just Null))
           let returnCode = getResponseStatusCode response
               receivedHeaders = fromHTTPHeaders $ responseHeaders response
               assertionErrors =
