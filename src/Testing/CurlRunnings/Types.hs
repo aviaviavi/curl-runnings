@@ -198,6 +198,9 @@ data JsonSubExpr
   -- | Assert the key value pair can be found somewhere the json.
   | KeyValueMatch { matchKey   :: T.Text
                   , matchValue :: Value }
+  -- | A fully qualified path to a key/index that point to a specific value in the json
+  | FullPathKeyValueMatch { fullPathKey    :: T.Text
+                          , fullMatchValue :: Value }
   deriving (Show, Generic)
 
 instance FromJSON JsonSubExpr where
