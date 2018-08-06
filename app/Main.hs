@@ -116,7 +116,7 @@ shouldUpgrade asset =
   let assetNameTokens = T.splitOn "-" (Main.name asset)
   in if length assetNameTokens `notElem` [3, 4]
        then False
-       else assetNameTokens !! 2 /= T.pack (showVersion version)
+       else (T.replace  ".tar.gz" "" (assetNameTokens !! 2)) /= T.pack (showVersion version)
 
 -- | If conditions are met, download the appropriate tarball from the latest
 -- github release, extract and copy to /usr/local/bin
