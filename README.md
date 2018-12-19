@@ -102,6 +102,24 @@ For more info:
 
 ```curl-runnings --help ```
 
+
+### Running With Docker
+The dockerfile is included in the root of the project. The Dockerfile will expect a curl-runnings executable in the same directory as the Dockerfile and a tests.yml file. You can download the latest executable from the release page : https://github.com/aviaviavi/curl-runnings/releases .
+
+``` docker build . -t curl-runnings-tests```
+
+```  docker run curl-runnings-tests```
+
+In case u use docker-compose, you can add this to docker-compose.yml:
+
+```
+tests:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+```
+
+
 ### Contributing
 
 Contributions in any form are welcome and encouraged. Don't be shy! :D
