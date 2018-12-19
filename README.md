@@ -111,7 +111,8 @@ The dockerfile is included in the root of the project. The Dockerfile will expec
 
 In case u use docker-compose, you can add this to docker-compose.yml:
 
-```tests:
+```
+tests:
     build:
       context: .
       dockerfile: ./Dockerfile
