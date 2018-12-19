@@ -8,7 +8,6 @@ RUN \
   
 # Add files.
 WORKDIR /home
-RUN curl -sSL https://get.haskellstack.org/ | sh
 COPY . .
 
 # Define default command.
