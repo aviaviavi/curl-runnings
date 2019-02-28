@@ -23,6 +23,7 @@ module Testing.CurlRunnings.Types
   , FullQueryText
   , SingleQueryText
   , CurlRunningsState(..)
+  , TLSCheckType(..)
 
   , isFailing
   , isPassing
@@ -391,14 +392,16 @@ isFailing = not . isPassing
 -- | A map of the system environment
 type Environment = H.HashMap T.Text T.Text
 
+data TLSCheckType = SkipTLSCheck | DoTLSCheck deriving (Show, Eq)
+
 -- | The state of a suite. Tracks environment variables, and all the test results so far
-data CurlRunningsState = CurlRunningsState Environment [CaseResult] LogLevel
+data CurlRunningsState = CurlRunningsState Environment [CaseResult] LogLevel TLSCheckType
 
 logger :: CurlRunningsState -> CurlRunningsLogger
-logger (CurlRunningsState _ _ l) = makeLogger l
+logger (CurlRunningsState _ _ l _) = makeLogger l
 
 unsafeLogger :: Show a => CurlRunningsState -> CurlRunningsUnsafeLogger a
-unsafeLogger (CurlRunningsState _ _ l) = makeUnsafeLogger l
+unsafeLogger (CurlRunningsState _ _ l _) = makeUnsafeLogger l
 
 -- | A single lookup operation in a json query
 data Index
