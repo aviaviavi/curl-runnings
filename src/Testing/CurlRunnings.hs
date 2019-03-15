@@ -24,6 +24,8 @@ import           Data.Monoid
 import qualified Data.Text                            as T
 import qualified Data.Vector                          as V
 import qualified Data.Yaml.Include                    as YI
+import           Network.Connection                   (TLSSettings (..))
+import           Network.HTTP.Client.TLS              (mkManagerSettings)
 import           Network.HTTP.Conduit
 import           Network.HTTP.Simple
 import qualified Network.HTTP.Types.Header            as HTTP
@@ -34,6 +36,7 @@ import           Testing.CurlRunnings.Internal.Parser
 import           Testing.CurlRunnings.Types
 import           Text.Printf
 import           Text.Regex.Posix
+
 
 -- | decode a json or yaml file into a suite object
 decodeFile :: FilePath -> IO (Either String CurlSuite)
@@ -48,10 +51,22 @@ decodeFile specPath =
              _ -> return . Left $ printf "Invalid spec path %s" specPath
       else return . Left $ printf "%s not found" specPath
 
+
+noVerifyTlsManagerSettings :: ManagerSettings
+noVerifyTlsManagerSettings = mkManagerSettings noVerifyTlsSettings Nothing
+
+noVerifyTlsSettings :: TLSSettings
+noVerifyTlsSettings =
+  TLSSettingsSimple
+  { settingDisableCertificateValidation = True
+  , settingDisableSession = True
+  , settingUseServerName = False
+  }
+
 -- | Run a single test case, and returns the result. IO is needed here since this method is responsible
 -- for actually curling the test case endpoint and parsing the result.
 runCase :: CurlRunningsState -> CurlCase -> IO CaseResult
-runCase state curlCase = do
+runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
   let eInterpolatedUrl = interpolateQueryString state $ url curlCase
       eInterpolatedHeaders =
         interpolateHeaders state $ fromMaybe (HeaderSet []) (headers curlCase)
@@ -66,9 +81,11 @@ runCase state curlCase = do
           return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase l]
         Right replacedJSON -> do
           initReq <- parseRequest $ T.unpack interpolatedUrl
+          manager <- newManager noVerifyTlsManagerSettings
           let request =
                 setRequestBodyJSON (fromMaybe emptyObject replacedJSON) .
-                setRequestHeaders (toHTTPHeaders interpolatedHeaders) $
+                setRequestHeaders (toHTTPHeaders interpolatedHeaders) .
+                (if tlsCheckType == DoTLSCheck then id else (setRequestManager manager)) $
                 initReq {method = B8S.pack . show $ requestMethod curlCase}
           logger state DEBUG (pShow request)
           logger
@@ -183,8 +200,8 @@ printR :: Show a => a -> IO a
 printR x = print x >> return x
 
 -- | Runs the test cases in order and stop when an error is hit. Returns all the results
-runSuite :: CurlSuite -> LogLevel -> IO [CaseResult]
-runSuite (CurlSuite cases filterRegex) logLevel = do
+runSuite :: CurlSuite -> LogLevel -> TLSCheckType -> IO [CaseResult]
+runSuite (CurlSuite cases filterRegex) logLevel tlsType = do
   fullEnv <- getEnvironment
   let envMap = H.fromList $ map (\(x, y) -> (T.pack x, T.pack y)) fullEnv
       filterNameByRegexp curlCase =
@@ -198,12 +215,12 @@ runSuite (CurlSuite cases filterRegex) logLevel = do
          Just CaseFail {} -> return prevResults
          Just CasePass {} -> do
            result <-
-             runCase (CurlRunningsState envMap prevResults logLevel) curlCase >>=
+             runCase (CurlRunningsState envMap prevResults logLevel tlsType) curlCase >>=
              printR
            return $ prevResults ++ [result]
          Nothing -> do
            result <-
-             runCase (CurlRunningsState envMap [] logLevel) curlCase >>= printR
+             runCase (CurlRunningsState envMap [] logLevel tlsType) curlCase >>= printR
            return [result])
     []
     (filter filterNameByRegexp cases)
@@ -367,14 +384,14 @@ getStringValueForQuery state i@(InterpolatedQuery rawText (Query _)) =
     Left l           -> Left l
     Right (String s) -> Right $ rawText <> s
     (Right o)        -> Left $ QueryTypeMismatch "Expected a string" o
-getStringValueForQuery (CurlRunningsState env _ _) (InterpolatedQuery rawText (EnvironmentVariable v)) =
+getStringValueForQuery (CurlRunningsState env _ _ _) (InterpolatedQuery rawText (EnvironmentVariable v)) =
   Right $ rawText <> H.lookupDefault "" v env
 
 -- | Lookup the value for the specified query
 getValueForQuery ::
      CurlRunningsState -> InterpolatedQuery -> Either QueryError Value
 getValueForQuery _ (LiteralText rawText) = Right $ String rawText
-getValueForQuery (CurlRunningsState _ previousResults _) full@(NonInterpolatedQuery (Query indexes)) =
+getValueForQuery (CurlRunningsState _ previousResults _ _) full@(NonInterpolatedQuery (Query indexes)) =
   case head indexes of
     (CaseResultIndex i) ->
       let maybeCase = arrayGet previousResults $ fromInteger i
@@ -417,7 +434,7 @@ getValueForQuery (CurlRunningsState _ previousResults _) full@(NonInterpolatedQu
       T.pack $
       "'$< ... >' queries must start with a RESPONSES[index] query: " ++
       show full
-getValueForQuery (CurlRunningsState env _ _) (NonInterpolatedQuery (EnvironmentVariable var)) =
+getValueForQuery (CurlRunningsState env _ _ _) (NonInterpolatedQuery (EnvironmentVariable var)) =
   Right . String $ H.lookupDefault "" var env
 getValueForQuery state (InterpolatedQuery _ q) =
   case getValueForQuery state (NonInterpolatedQuery q) of

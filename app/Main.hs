@@ -30,9 +30,10 @@ import           Testing.CurlRunnings.Types
 
 -- | Command line flags
 data CurlRunnings = CurlRunnings
-  { file    :: FilePath
-  , grep    :: Maybe T.Text
-  , upgrade :: Bool
+  { file           :: FilePath
+  , grep           :: Maybe T.Text
+  , upgrade        :: Bool
+  , skip_tls_check :: Bool
   } deriving (Show, Data, Typeable, Eq)
 
 -- | cmdargs object
@@ -42,6 +43,7 @@ argParser =
   { file = def &= typFile &= help "File to run"
   , grep = def &= help "Regex to filter test cases by name"
   , upgrade = def &= help "Pull the latest version of curl runnings"
+  , skip_tls_check = def &= help "Don't perform a TLS check (USE WITH CAUTION. Only use this if you signed your own certs)"
   } &=
   summary ("curl-runnings " ++ showVersion version) &=
   program "curl-runnings" &=
@@ -72,17 +74,17 @@ instance FromJSON GithubReleasesResponse
 setGithubReqHeaders :: Request -> Request
 setGithubReqHeaders = setRequestHeaders [("User-Agent", "aviaviavi")]
 
-runFile :: FilePath -> Verbosity -> Maybe T.Text -> IO ()
-runFile "" _ _ =
+runFile :: FilePath -> Verbosity -> Maybe T.Text -> TLSCheckType -> IO ()
+runFile "" _ _ _ =
   putStrLn
     "Please specify an input file with the --file (-f) flag or use --help for more information"
-runFile path verbosityLevel regexp = do
+runFile path verbosityLevel regexp tlsType = do
   home <- getEnv "HOME"
   suite <- decodeFile . T.unpack $ T.replace "~" (T.pack home) (T.pack path)
   case suite of
     Right s -> do
       results <-
-        runSuite (s {suiteCaseFilter = regexp}) $ toLogLevel verbosityLevel
+        runSuite (s {suiteCaseFilter = regexp}) (toLogLevel verbosityLevel) $ tlsType
       if any isFailing results
         then putStrLn (T.unpack $ makeRed "Some tests failed") >>
              exitWith (ExitFailure 1)
@@ -188,6 +190,7 @@ main :: IO ()
 main = do
   userArgs <- cmdArgs argParser
   verbosityLevel <- getVerbosity
+  let tlsCheckType = if skip_tls_check userArgs then SkipTLSCheck else DoTLSCheck
   if upgrade userArgs
     then upgradeCurlRunnings
-    else runFile (file userArgs) verbosityLevel (grep userArgs)
+    else runFile (file userArgs) verbosityLevel (grep userArgs) tlsCheckType
