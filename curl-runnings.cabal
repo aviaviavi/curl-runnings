@@ -1,13 +1,13 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.0.
+-- This file has been generated from package.yaml by hpack version 0.31.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 189771adeec42ac2e6e8c4262b0b81286359f74f9b96f05112a73a634b960615
+-- hash: e7cff7f0f8e0a24c815714efc642a28f90928aa4c4dc7cc5743c8bfb9ece772c
 
 name:           curl-runnings
-version:        0.9.2
+version:        0.10.0
 synopsis:       A framework for declaratively writing curl based API tests
 description:    Please see the README on Github at <https://github.com/aviaviavi/curl-runnings#readme>
 category:       Testing
