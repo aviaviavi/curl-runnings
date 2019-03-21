@@ -27,8 +27,8 @@ import qualified Data.Yaml.Include                    as YI
 import           Network.Connection                   (TLSSettings (..))
 import           Network.HTTP.Client.TLS              (mkManagerSettings)
 import           Network.HTTP.Conduit
-import           Network.HTTP.Simple
-import qualified Network.HTTP.Types.Header            as HTTP
+import           Network.HTTP.Simple                  hiding (Header)
+import qualified Network.HTTP.Simple                  as HTTP
 import           System.Directory
 import           System.Environment
 import           Testing.CurlRunnings.Internal

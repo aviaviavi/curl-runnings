@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.1.
+-- This file has been generated from package.yaml by hpack version 0.31.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e7cff7f0f8e0a24c815714efc642a28f90928aa4c4dc7cc5743c8bfb9ece772c
+-- hash: 107f33201b37a94190519b2e8eb100aa18aadf1f6567dca84d9482b4c7c68a8b
 
 name:           curl-runnings
 version:        0.10.0
@@ -43,9 +43,8 @@ library
     , hspec >=2.4.4
     , hspec-expectations >=0.8.2
     , http-client-tls >=0.3.5.3
-    , http-conduit >=2.2.4
-    , http-types >=0.9.1
-    , megaparsec >=6.3.0
+    , http-conduit >=2.3.6
+    , megaparsec >=7.0.4
     , pretty-simple >=2.0.2.1
     , regex-posix >=0.95.2
     , text >=1.2.2.2
