@@ -48,7 +48,7 @@ parseQuery q =
   let trimmed = T.strip q
   in case Text.Megaparsec.parse parseFullTextWithQuery "" trimmed of
        Right a -> Right a >>= validateQuery
-       Left a -> Left $ QueryParseError (T.pack $ parseErrorPretty a) q
+       Left a -> Left $ QueryParseError (T.pack $ errorBundlePretty a) q
 
 -- | Once we have parsed a query successfully, ensure that it is a legal query
 validateQuery :: [InterpolatedQuery] -> Either QueryError [InterpolatedQuery]
@@ -137,11 +137,11 @@ interpolatedQueryParser = do
   else return $ InterpolatedQuery (T.pack text) q
 
 leadingText :: Parser String
-leadingText = manyTill anyChar $ lookAhead (symbol "$<" <|> "${")
+leadingText = manyTill anySingle $ lookAhead (symbol "$<" <|> "${")
 
 noQueryText :: Parser InterpolatedQuery
 noQueryText = do
-  str <- some anyChar
+  str <- some anySingle
   eof
   if "$<" `isInfixOf` str
     then fail "invalid `$<` found"
