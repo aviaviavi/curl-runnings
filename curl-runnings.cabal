@@ -1,13 +1,13 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.2.
+-- This file has been generated from package.yaml by hpack version 0.31.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 107f33201b37a94190519b2e8eb100aa18aadf1f6567dca84d9482b4c7c68a8b
+-- hash: b7f43a448b7bffd8bc3340f6483fb99f6391934bc869150ced8021708ca83864
 
 name:           curl-runnings
-version:        0.10.0
+version:        0.11.0
 synopsis:       A framework for declaratively writing curl based API tests
 description:    Please see the README on Github at <https://github.com/aviaviavi/curl-runnings#readme>
 category:       Testing
@@ -31,6 +31,13 @@ source-repository head
   location: https://github.com/aviaviavi/curl-runnings
 
 library
+  exposed-modules:
+      Testing.CurlRunnings
+      Testing.CurlRunnings.Types
+      Testing.CurlRunnings.Internal
+      Testing.CurlRunnings.Internal.Parser
+  other-modules:
+      Paths_curl_runnings
   hs-source-dirs:
       src
   build-depends:
@@ -51,17 +58,12 @@ library
     , unordered-containers >=0.2.8.0
     , vector >=0.12.0
     , yaml >=0.8.28
-  exposed-modules:
-      Testing.CurlRunnings
-      Testing.CurlRunnings.Types
-      Testing.CurlRunnings.Internal
-      Testing.CurlRunnings.Internal.Parser
-  other-modules:
-      Paths_curl_runnings
   default-language: Haskell2010
 
 executable curl-runnings
   main-is: Main.hs
+  other-modules:
+      Paths_curl_runnings
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
@@ -76,13 +78,13 @@ executable curl-runnings
     , tar >=0.5.0.3
     , text >=1.2.2.2
     , zlib >=0.6.1.2
-  other-modules:
-      Paths_curl_runnings
   default-language: Haskell2010
 
 test-suite curl-runnings-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
+  other-modules:
+      Paths_curl_runnings
   hs-source-dirs:
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
@@ -92,6 +94,4 @@ test-suite curl-runnings-test
     , directory >=1.3.0.2
     , hspec >=2.4.4
     , hspec-expectations >=0.8.2
-  other-modules:
-      Paths_curl_runnings
   default-language: Haskell2010
