@@ -361,7 +361,7 @@ instance Show CaseResult where
     T.unpack $ makeRed "[FAIL] " <>
     name c <>
     "\n" <>
-    mconcat (map ((\s -> "\nAssertion failed: " <> s) . (<> "\n") . pShow) failures)
+    mconcat (map ((\s -> "\nAssertion failed: " <> s) . (<> "\n") . (T.pack . show)) failures)
 
 -- | A wrapper type around a set of test cases. This is the top level spec type
 -- that we parse a test spec file into
