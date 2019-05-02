@@ -37,12 +37,17 @@ is also being developed and may fulfill the same needs.
 
 ### Installing
 
-There are few options to install:
+The best way to install curl-runnings is with the [scarf](https://scarf.sh)
+package manager.
 
-- download the Linux or Mac built releases from the
-  github [releases page](https://github.com/aviaviavi/curl-runnings/releases)
-- install the binary with `stack` or `cabal`
-- build from source with `stack`
+```bash
+# If you don't have scarf, you can easily install it with:
+$ curl -L https://scarf.sh/install | bash
+ 
+$ scarf install curl-runnings
+```
+
+Alternatively, you can compile from source with stack.
 
 ### Writing a test specification
 
