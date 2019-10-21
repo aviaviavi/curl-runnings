@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- | Internal module for parsing string based directives inside of curl runnings
 -- suites. Use this module at your own risk, it may change. Currently, string
@@ -48,7 +48,7 @@ parseQuery q =
   let trimmed = T.strip q
   in case Text.Megaparsec.parse parseFullTextWithQuery "" trimmed of
        Right a -> Right a >>= validateQuery
-       Left a -> Left $ QueryParseError (T.pack $ errorBundlePretty a) q
+       Left a  -> Left $ QueryParseError (T.pack $ errorBundlePretty a) q
 
 -- | Once we have parsed a query successfully, ensure that it is a legal query
 validateQuery :: [InterpolatedQuery] -> Either QueryError [InterpolatedQuery]
@@ -121,7 +121,7 @@ keyIndexParser = do
   notFollowedBy endingChars
   (lexeme . try) ((KeyIndex . T.pack) <$> p)
   where
-    p = (:) <$> letterChar <*> many (noneOf ['.', '[', ']', '<', '>', ' ', '{', '}'])
+    p = (:) <$> (letterChar <|> (char '_')) <*> many (noneOf ['.', '[', ']', '<', '>', ' ', '{', '}'])
 
 jsonIndexParser :: Parser Query
 jsonIndexParser =
