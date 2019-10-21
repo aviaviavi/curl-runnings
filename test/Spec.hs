@@ -27,6 +27,7 @@ main = hspec $
     parseQuery "just some text" `shouldSatisfy` isRight
     parseQuery "$<RESPONSES[0].key.key>" `shouldSatisfy` isRight
     parseQuery "$<RESPONSES[0].key.key[0].key_with_underscores>" `shouldSatisfy` isRight
+    parseQuery "$<RESPONSES[0].key.key[0]._key_starts_with_underscores>" `shouldSatisfy` isRight
     parseQuery "$<RESPONSES[100].key.key[0].key_with_underscores>" `shouldSatisfy` isRight
     parseQuery "some text before $<RESPONSES[100].key.key[0].key_with_underscores> and after" `shouldSatisfy` isRight
     parseQuery "some $<RESPONSES[100]> querires $<RESPONSES[100]>" `shouldSatisfy` isRight
