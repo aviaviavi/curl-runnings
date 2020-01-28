@@ -133,8 +133,8 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
 
 checkHeaders ::
      CurlRunningsState -> CurlCase -> Headers -> Maybe AssertionFailure
-checkHeaders _ (CurlCase _ _ _ _ _ _ _ Nothing) _ = Nothing
-checkHeaders state curlCase@(CurlCase _ _ _ _ _ _ _ (Just (HeaderMatcher m))) receivedHeaders =
+checkHeaders _ (CurlCase _ _ _ _ _ _ _ _ Nothing) _ = Nothing
+checkHeaders state curlCase@(CurlCase _ _ _ _ _ _ _ _ (Just (HeaderMatcher m))) receivedHeaders =
   let interpolatedHeaders = mapM (interpolatePartialHeader state) m
   in case interpolatedHeaders of
        Left f -> Just $ QueryFailure curlCase f
@@ -229,7 +229,7 @@ runSuite (CurlSuite cases filterRegex) logLevel tlsType = do
 checkBody ::
      CurlRunningsState -> CurlCase -> Maybe Value -> Maybe AssertionFailure
 -- | We are looking for an exact payload match, and we have a payload to check
-checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Exactly expectedValue)) _ _) (Just receivedBody) =
+checkBody state curlCase@(CurlCase _ _ _ _ _ _ (Just (Exactly expectedValue)) _ _) (Just receivedBody) =
   case runReplacements state expectedValue of
     (Left err) -> Just $ QueryFailure curlCase err
     (Right interpolated) ->
@@ -242,7 +242,7 @@ checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Exactly expectedValue)) _ _)
                (Just receivedBody)
         else Nothing
 -- | We are checking a list of expected subvalues, and we have a payload to check
-checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Contains subexprs)) _ _) (Just receivedBody) =
+checkBody state curlCase@(CurlCase _ _ _ _ _ _ (Just (Contains subexprs)) _ _) (Just receivedBody) =
   case runReplacementsOnSubvalues state subexprs of
     Left f -> Just $ QueryFailure curlCase f
     Right updatedMatcher ->
@@ -253,7 +253,7 @@ checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Contains subexprs)) _ _) (Ju
         else Just $
              DataFailure curlCase (Contains updatedMatcher) (Just receivedBody)
 -- | We are checking a list of expected absent subvalues, and we have a payload to check
-checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (NotContains subexprs)) _ _) (Just receivedBody) =
+checkBody state curlCase@(CurlCase _ _ _ _ _ _ (Just (NotContains subexprs)) _ _) (Just receivedBody) =
   case runReplacementsOnSubvalues state subexprs of
     Left f -> Just $ QueryFailure curlCase f
     Right updatedMatcher ->
@@ -267,7 +267,7 @@ checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (NotContains subexprs)) _ _) 
                (Just receivedBody)
         else Nothing
 -- | We are checking for both contains and notContains vals, and we have a payload to check
-checkBody state curlCase@(CurlCase _ _ _ _ _ (Just m@(MixedContains subexprs)) _ _) receivedBody =
+checkBody state curlCase@(CurlCase _ _ _ _ _ _ (Just m@(MixedContains subexprs)) _ _) receivedBody =
   let failure =
         join $
         find
@@ -281,10 +281,10 @@ checkBody state curlCase@(CurlCase _ _ _ _ _ (Just m@(MixedContains subexprs)) _
              subexprs)
   in fmap (\_ -> DataFailure curlCase m receivedBody) failure
 -- | We expected a body but didn't get one
-checkBody _ curlCase@(CurlCase _ _ _ _ _ (Just anything) _ _) Nothing =
+checkBody _ curlCase@(CurlCase _ _ _ _ _ _ (Just anything) _ _) Nothing =
   Just $ DataFailure curlCase anything Nothing
 -- | No assertions on the body
-checkBody _ (CurlCase _ _ _ _ _ Nothing _ _) _ = Nothing
+checkBody _ (CurlCase _ _ _ _ _ _ Nothing _ _) _ = Nothing
 
 runReplacementsOnSubvalues ::
      CurlRunningsState -> [JsonSubExpr] -> Either QueryError [JsonSubExpr]
@@ -493,10 +493,10 @@ traverseValue val =
 -- | Verify the returned http status code is ok, construct the right failure
 -- type if needed
 checkCode :: CurlCase -> Int -> Maybe AssertionFailure
-checkCode curlCase@(CurlCase _ _ _ _ _ _ (ExactCode expectedCode) _) receivedCode
+checkCode curlCase@(CurlCase _ _ _ _ _ _ _ (ExactCode expectedCode) _) receivedCode
   | expectedCode /= receivedCode = Just $ StatusFailure curlCase receivedCode
   | otherwise = Nothing
-checkCode curlCase@(CurlCase _ _ _ _ _ _ (AnyCodeIn l) _) receivedCode
+checkCode curlCase@(CurlCase _ _ _ _ _ _ _ (AnyCodeIn l) _) receivedCode
   | receivedCode `notElem` l = Just $ StatusFailure curlCase receivedCode
   | otherwise = Nothing
 

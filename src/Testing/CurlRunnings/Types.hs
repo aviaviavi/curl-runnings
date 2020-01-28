@@ -188,16 +188,32 @@ instance FromJSON StatusCodeMatcher where
   parseJSON obj@(Array _)  = AnyCodeIn <$> parseJSON obj
   parseJSON invalid        = typeMismatch "StatusCodeMatcher" invalid
 
+-- | A representation of a single query parameter
+data QueryParameter = QueryParameter T.Text T.Text deriving (Show, Generic)
+
+instance ToJSON QueryParameter
+
+-- | A container for a list of query parameters
+newtype QueryParameters = QueryParameters [QueryParameter] deriving (Show, Generic)
+
+instance ToJSON QueryParameters
+
+instance FromJSON QueryParameters where
+  parseJSON = withObject "queryParameters" parseQueryParameters where
+    parseQueryParameters o = QueryParameters <$> traverse parseQueryParameter (H.toList o)
+    parseQueryParameter (t, v) = withText "queryParameterKey" (\parsed -> return $ QueryParameter t parsed) v
+
 -- | A single curl test case, the basic foundation of a curl-runnings test.
 data CurlCase = CurlCase
-  { name          :: T.Text -- ^ The name of the test case
-  , url           :: T.Text -- ^ The target url to test
-  , requestMethod :: HttpMethod -- ^ Verb to use for the request
-  , requestData   :: Maybe Value -- ^ Payload to send with the request, if any
-  , headers       :: Maybe Headers -- ^ Headers to send with the request, if any
-  , expectData    :: Maybe JsonMatcher -- ^ The assertions to make on the response payload, if any
-  , expectStatus  :: StatusCodeMatcher -- ^ Assertion about the status code returned by the target
-  , expectHeaders :: Maybe HeaderMatcher -- ^ Assertions to make about the response headers, if any
+  { name            :: T.Text -- ^ The name of the test case
+  , url             :: T.Text -- ^ The target url to test
+  , requestMethod   :: HttpMethod -- ^ Verb to use for the request
+  , requestData     :: Maybe Value -- ^ Payload to send with the request, if any
+  , queryParameters :: Maybe QueryParameters -- ^ Query parameters to set in the request, if any
+  , headers         :: Maybe Headers -- ^ Headers to send with the request, if any
+  , expectData      :: Maybe JsonMatcher -- ^ The assertions to make on the response payload, if any
+  , expectStatus    :: StatusCodeMatcher -- ^ Assertion about the status code returned by the target
+  , expectHeaders   :: Maybe HeaderMatcher -- ^ Assertions to make about the response headers, if any
   } deriving (Show, Generic)
 
 instance FromJSON CurlCase
