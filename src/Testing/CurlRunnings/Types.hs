@@ -11,6 +11,8 @@ module Testing.CurlRunnings.Types
   , Header(..)
   , HeaderMatcher(..)
   , Headers(..)
+  , QueryParameter(..)
+  , QueryParameters(..)
   , HttpMethod(..)
   , JsonMatcher(..)
   , JsonSubExpr(..)

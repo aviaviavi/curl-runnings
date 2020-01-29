@@ -22,6 +22,7 @@ import           Data.List
 import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text                            as T
+import qualified Data.Text.Encoding                   as T
 import qualified Data.Vector                          as V
 import qualified Data.Yaml.Include                    as YI
 import           Network.Connection                   (TLSSettings (..))
@@ -29,6 +30,7 @@ import           Network.HTTP.Client.TLS              (mkManagerSettings)
 import           Network.HTTP.Conduit
 import           Network.HTTP.Simple                  hiding (Header)
 import qualified Network.HTTP.Simple                  as HTTP
+import qualified Network.HTTP.Types                   as NT
 import           System.Directory
 import           System.Environment
 import           Testing.CurlRunnings.Internal
@@ -63,6 +65,11 @@ noVerifyTlsSettings =
   , settingUseServerName = False
   }
 
+appendQueryParameters :: QueryParameters -> Request -> Request
+appendQueryParameters (QueryParameters new) r = setQueryString (existing ++ newQuery) r where
+  existing = NT.parseQuery (queryString r)
+  newQuery = NT.simpleQueryToQuery (fmap (\(QueryParameter k v) -> (T.encodeUtf8 k, T.encodeUtf8 v)) new)
+
 -- | Run a single test case, and returns the result. IO is needed here since this method is responsible
 -- for actually curling the test case endpoint and parsing the result.
 runCase :: CurlRunningsState -> CurlCase -> IO CaseResult
@@ -82,11 +89,14 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
         Right replacedJSON -> do
           initReq <- parseRequest $ T.unpack interpolatedUrl
           manager <- newManager noVerifyTlsManagerSettings
+
           let request =
                 setRequestBodyJSON (fromMaybe emptyObject replacedJSON) .
                 setRequestHeaders (toHTTPHeaders interpolatedHeaders) .
+                foldr (\params _ -> appendQueryParameters params) id (queryParameters curlCase) .
                 (if tlsCheckType == DoTLSCheck then id else (setRequestManager manager)) $
                 initReq {method = B8S.pack . show $ requestMethod curlCase}
+
           logger state DEBUG (pShow request)
           logger
             state
