@@ -35,14 +35,15 @@ module Testing.CurlRunnings.Types
 import           Data.Aeson
 import           Data.Aeson.Types
 import           Data.Either
-import qualified Data.HashMap.Strict           as H
+import qualified Data.HashMap.Strict                   as H
 import           Data.List
 import           Data.Maybe
 import           Data.Monoid
-import qualified Data.Text                     as T
-import qualified Data.Vector                   as V
+import qualified Data.Text                             as T
+import qualified Data.Vector                           as V
 import           GHC.Generics
 import           Testing.CurlRunnings.Internal
+import           Testing.CurlRunnings.Internal.Headers
 import           Text.Printf
 
 -- | A basic enum for supported HTTP verbs
@@ -93,22 +94,6 @@ isNotContains :: JsonMatcher -> Bool
 isNotContains (NotContains _) = True
 isNotContains _               = False
 
--- | A representation of a single header
-data Header =
-  Header T.Text
-         T.Text
-  deriving (Show, Generic)
-
-instance ToJSON Header
-
--- | Simple container for a list of headers, useful for a vehicle for defining a
--- fromJSON
-data Headers =
-  HeaderSet [Header]
-  deriving (Show, Generic)
-
-instance ToJSON Headers
-
 -- | Specify a key, value, or both to match against in the returned headers of a
 -- response.
 data PartialHeaderMatcher =
@@ -144,33 +129,6 @@ instance Show QueryError where
   show (NullPointer full part) = printf "null pointer in %s at %s" (T.unpack full) $ T.unpack part
   show (QueryTypeMismatch message val) = printf "type error: %s %s" message $ show val
   show (QueryValidationError message) = printf "invalid query: %s" message
-
-parseHeader :: T.Text -> Either T.Text Header
-parseHeader str =
-  case map T.strip $ T.splitOn ":" str of
-    [key, val]   -> Right $ Header key val
-    anythingElse -> Left . T.pack $ "bad header found: " ++ show anythingElse
-
-parseHeaders :: T.Text -> Either T.Text Headers
-parseHeaders str =
-  let _headers = filter (/= "") $ T.splitOn ";" str
-      parses = map parseHeader _headers
-  in case find isLeft parses of
-       Just (Left failure) -> Left failure
-       _ ->
-         Right . HeaderSet $
-         map
-           (fromRight $
-            error
-              "Internal error parsing headers, this is a bug in curl runnings :(")
-           parses
-
-instance FromJSON Headers where
-  parseJSON a@(String v) =
-    case parseHeaders v of
-      Right h      -> return h
-      Left failure -> typeMismatch ("Header failure: " ++ T.unpack failure) a
-  parseJSON invalid = typeMismatch "Header" invalid
 
 instance FromJSON HeaderMatcher where
   parseJSON o@(String v) =

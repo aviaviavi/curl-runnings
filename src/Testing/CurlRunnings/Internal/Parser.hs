@@ -34,6 +34,8 @@ module Testing.CurlRunnings.Internal.Parser
       parseQuery
     ) where
 
+import           Data.Bifunctor             (Bifunctor (..))
+import           Data.Char                  (isAscii)
 import           Data.List
 import qualified Data.Text                  as T
 import           Data.Void
@@ -151,4 +153,3 @@ noQueryText = do
 
 parseFullTextWithQuery :: Parser [InterpolatedQuery]
 parseFullTextWithQuery = many ((try interpolatedQueryParser) <|> noQueryText)
-

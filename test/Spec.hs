@@ -3,10 +3,12 @@
 module Main where
 
 import           Data.Either
+import qualified Data.Text                                  as T
 import           System.Directory
 import           Test.Hspec
 import           Testing.CurlRunnings
 import           Testing.CurlRunnings.Internal
+import           Testing.CurlRunnings.Internal.Headers
 import           Testing.CurlRunnings.Internal.Parser
 
 main :: IO ()
@@ -44,6 +46,38 @@ main = hspec $
     parseQuery "$<POOP[0].key.key>" `shouldSatisfy` isLeft
     parseQuery "some text $<BAD_RESPONSES_REF[0].key.key>" `shouldSatisfy` isLeft
 
+  it "should parse valid headers" $ do
+    parseHeaders "key:" `shouldBeHeaders` [("key", "")]
+    parseHeaders "key: ;" `shouldBeHeaders` [("key", "")]
+    parseHeaders "key:" `shouldBeHeaders` [("key", "")]
+    parseHeaders "key: value" `shouldBeHeaders` [("key", "value")]
+    parseHeaders "key: value;" `shouldBeHeaders` [("key", "value")]
+    parseHeaders "key : value" `shouldBeHeaders` [("key", "value")]
+    parseHeaders "key :value" `shouldBeHeaders` [("key", "value")]
+    parseHeaders "key : value " `shouldBeHeaders` [("key", "value")]
+    parseHeaders "  key : value " `shouldBeHeaders` [("key", "value")]
+    parseHeaders "key name : value" `shouldBeHeaders` [("key name", "value")]
+    parseHeaders "key : value name " `shouldBeHeaders` [("key", "value name")]
+    parseHeaders "key1 : value1:value2;" `shouldBeHeaders` [("key1", "value1:value2")]
+    parseHeaders "key1 : value1:value2" `shouldBeHeaders` [("key1", "value1:value2")]
+    parseHeaders "key1 : value1 ; key2: value2" `shouldBeHeaders` [("key1", "value1"), ("key2", "value2")]
+    parseHeaders "key1 : value1 ;\n key2: value2" `shouldBeHeaders` [("key1", "value1"), ("key2", "value2")]
+    parseHeaders "key1 : value1 ;\n key2: value2\n" `shouldBeHeaders` [("key1", "value1"), ("key2", "value2")]
+    parseHeaders "key1 : value1 ;\n key2: value2;" `shouldBeHeaders` [("key1", "value1"), ("key2", "value2")]
+    parseHeaders "Content-Type : application/json" `shouldBeHeaders` [("Content-Type", "application/json")]
+    parseHeaders "$<RESPONSES[1].key[r]>: $<RESPONSES[100]> ;" `shouldBeHeaders` [("$<RESPONSES[1].key[r]>", "$<RESPONSES[100]>")]
+
+  it "should reject invalid headers" $ do
+    parseHeaders "" `shouldSatisfy` isLeft
+    parseHeaders "\n" `shouldSatisfy` isLeft
+    parseHeaders "£key: value" `shouldSatisfy` isLeft
+    parseHeaders "key: £value" `shouldSatisfy` isLeft
+    parseHeaders "key" `shouldSatisfy` isLeft
+    parseHeaders "key ;" `shouldSatisfy` isLeft
+    parseHeaders " : value" `shouldSatisfy` isLeft
+    parseHeaders " : value ;" `shouldSatisfy` isLeft
+    parseHeaders " : value ; key : value2" `shouldSatisfy` isLeft
+
   it "arrayGet should handle positive and negative indexes correctly" $ do
     let a = [1, 2, 3]
         b = [] :: [Int]
@@ -65,4 +99,7 @@ testValidSpec file = do
   spec <- decodeFile (currentDirectory ++ file)
   spec `shouldSatisfy` isRight
 
-
+shouldBeHeaders :: (Eq a, Show a) => Either a Headers -> [(T.Text, T.Text)] -> Expectation
+shouldBeHeaders actual expected =
+  let expectedHeaders = Right . HeaderSet $ uncurry Header <$> expected in
+    actual `shouldBe` expectedHeaders
