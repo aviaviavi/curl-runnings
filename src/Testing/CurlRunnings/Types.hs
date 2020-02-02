@@ -191,14 +191,14 @@ instance FromJSON StatusCodeMatcher where
   parseJSON invalid        = typeMismatch "StatusCodeMatcher" invalid
 
 -- | A representation of a single query parameter
-data QueryParameter = QueryParameter T.Text T.Text deriving (Show, Generic)
-
-instance ToJSON QueryParameter
+data QueryParameter = QueryParameter T.Text T.Text deriving Show
 
 -- | A container for a list of query parameters
-newtype QueryParameters = QueryParameters [QueryParameter] deriving (Show, Generic)
+newtype QueryParameters = QueryParameters [QueryParameter] deriving Show
 
-instance ToJSON QueryParameters
+instance ToJSON QueryParameters where
+  toJSON (QueryParameters qs) =
+    object (fmap (\(QueryParameter k v) -> k .= toJSON v) qs)
 
 instance FromJSON QueryParameters where
   parseJSON = withObject "queryParameters" parseQueryParameters where
