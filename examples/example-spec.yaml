@@ -6,6 +6,8 @@ cases:
   - name: test 1 # required
     url: http://your-endpoint.com/status # required
     requestMethod: GET # required
+    queryParameters: # optional (in addition to those set on the url).
+        key: value
     # [Optional] Specify the json payload we expect here
     # The 1 key in this block should be either:
     # exactly | contains

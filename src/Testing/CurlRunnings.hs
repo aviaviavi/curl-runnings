@@ -22,6 +22,7 @@ import           Data.List
 import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text                            as T
+import qualified Data.Text.Encoding                   as T
 import qualified Data.Vector                          as V
 import qualified Data.Yaml.Include                    as YI
 import           Network.Connection                   (TLSSettings (..))
@@ -29,6 +30,7 @@ import           Network.HTTP.Client.TLS              (mkManagerSettings)
 import           Network.HTTP.Conduit
 import           Network.HTTP.Simple                  hiding (Header)
 import qualified Network.HTTP.Simple                  as HTTP
+import qualified Network.HTTP.Types                   as NT
 import           System.Directory
 import           System.Environment
 import           Testing.CurlRunnings.Internal
@@ -63,6 +65,12 @@ noVerifyTlsSettings =
   , settingUseServerName = False
   }
 
+-- | Fetch existing query parameters from the request and append those specfied in the queryParameters field.
+appendQueryParameters :: [QueryParameter] -> Request -> Request
+appendQueryParameters newParams r = setQueryString (existing ++ newQuery) r where
+  existing = NT.parseQuery $ queryString r
+  newQuery = NT.simpleQueryToQuery $ fmap (\(QueryParameter k v) -> (T.encodeUtf8 k, T.encodeUtf8 v)) newParams
+
 -- | Run a single test case, and returns the result. IO is needed here since this method is responsible
 -- for actually curling the test case endpoint and parsing the result.
 runCase :: CurlRunningsState -> CurlCase -> IO CaseResult
@@ -70,23 +78,29 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
   let eInterpolatedUrl = interpolateQueryString state $ url curlCase
       eInterpolatedHeaders =
         interpolateHeaders state $ fromMaybe (HeaderSet []) (headers curlCase)
-  case (eInterpolatedUrl, eInterpolatedHeaders) of
-    (Left err, _) ->
+      eInterpolatedQueryParams = interpolateViaJSON state $ fromMaybe (QueryParameters []) (queryParameters curlCase)
+  case (eInterpolatedUrl, eInterpolatedHeaders, eInterpolatedQueryParams) of
+    (Left err, _, _) ->
       return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err]
-    (_, Left err) ->
+    (_, Left err, _) ->
       return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err]
-    (Right interpolatedUrl, Right interpolatedHeaders) ->
+    (_, _, Left err) ->
+      return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err]
+    (Right interpolatedUrl, Right interpolatedHeaders, Right (QueryParameters interpolatedQueryParams)) ->
       case sequence $ runReplacements state <$> requestData curlCase of
         Left l ->
           return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase l]
         Right replacedJSON -> do
           initReq <- parseRequest $ T.unpack interpolatedUrl
           manager <- newManager noVerifyTlsManagerSettings
+
           let request =
                 setRequestBodyJSON (fromMaybe emptyObject replacedJSON) .
                 setRequestHeaders (toHTTPHeaders interpolatedHeaders) .
+                appendQueryParameters interpolatedQueryParams  .
                 (if tlsCheckType == DoTLSCheck then id else (setRequestManager manager)) $
                 initReq {method = B8S.pack . show $ requestMethod curlCase}
+
           logger state DEBUG (pShow request)
           logger
             state
@@ -133,8 +147,8 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
 
 checkHeaders ::
      CurlRunningsState -> CurlCase -> Headers -> Maybe AssertionFailure
-checkHeaders _ (CurlCase _ _ _ _ _ _ _ Nothing) _ = Nothing
-checkHeaders state curlCase@(CurlCase _ _ _ _ _ _ _ (Just (HeaderMatcher m))) receivedHeaders =
+checkHeaders _ (CurlCase _ _ _ _ _ _ _ _ Nothing) _ = Nothing
+checkHeaders state curlCase@(CurlCase _ _ _ _ _ _ _ _ (Just (HeaderMatcher m))) receivedHeaders =
   let interpolatedHeaders = mapM (interpolatePartialHeader state) m
   in case interpolatedHeaders of
        Left f -> Just $ QueryFailure curlCase f
@@ -229,7 +243,7 @@ runSuite (CurlSuite cases filterRegex) logLevel tlsType = do
 checkBody ::
      CurlRunningsState -> CurlCase -> Maybe Value -> Maybe AssertionFailure
 -- | We are looking for an exact payload match, and we have a payload to check
-checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Exactly expectedValue)) _ _) (Just receivedBody) =
+checkBody state curlCase@(CurlCase _ _ _ _ _ _ (Just (Exactly expectedValue)) _ _) (Just receivedBody) =
   case runReplacements state expectedValue of
     (Left err) -> Just $ QueryFailure curlCase err
     (Right interpolated) ->
@@ -242,7 +256,7 @@ checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Exactly expectedValue)) _ _)
                (Just receivedBody)
         else Nothing
 -- | We are checking a list of expected subvalues, and we have a payload to check
-checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Contains subexprs)) _ _) (Just receivedBody) =
+checkBody state curlCase@(CurlCase _ _ _ _ _ _ (Just (Contains subexprs)) _ _) (Just receivedBody) =
   case runReplacementsOnSubvalues state subexprs of
     Left f -> Just $ QueryFailure curlCase f
     Right updatedMatcher ->
@@ -253,7 +267,7 @@ checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (Contains subexprs)) _ _) (Ju
         else Just $
              DataFailure curlCase (Contains updatedMatcher) (Just receivedBody)
 -- | We are checking a list of expected absent subvalues, and we have a payload to check
-checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (NotContains subexprs)) _ _) (Just receivedBody) =
+checkBody state curlCase@(CurlCase _ _ _ _ _ _ (Just (NotContains subexprs)) _ _) (Just receivedBody) =
   case runReplacementsOnSubvalues state subexprs of
     Left f -> Just $ QueryFailure curlCase f
     Right updatedMatcher ->
@@ -267,7 +281,7 @@ checkBody state curlCase@(CurlCase _ _ _ _ _ (Just (NotContains subexprs)) _ _) 
                (Just receivedBody)
         else Nothing
 -- | We are checking for both contains and notContains vals, and we have a payload to check
-checkBody state curlCase@(CurlCase _ _ _ _ _ (Just m@(MixedContains subexprs)) _ _) receivedBody =
+checkBody state curlCase@(CurlCase _ _ _ _ _ _ (Just m@(MixedContains subexprs)) _ _) receivedBody =
   let failure =
         join $
         find
@@ -281,10 +295,10 @@ checkBody state curlCase@(CurlCase _ _ _ _ _ (Just m@(MixedContains subexprs)) _
              subexprs)
   in fmap (\_ -> DataFailure curlCase m receivedBody) failure
 -- | We expected a body but didn't get one
-checkBody _ curlCase@(CurlCase _ _ _ _ _ (Just anything) _ _) Nothing =
+checkBody _ curlCase@(CurlCase _ _ _ _ _ _ (Just anything) _ _) Nothing =
   Just $ DataFailure curlCase anything Nothing
 -- | No assertions on the body
-checkBody _ (CurlCase _ _ _ _ _ Nothing _ _) _ = Nothing
+checkBody _ (CurlCase _ _ _ _ _ _ Nothing _ _) _ = Nothing
 
 runReplacementsOnSubvalues ::
      CurlRunningsState -> [JsonSubExpr] -> Either QueryError [JsonSubExpr]
@@ -356,6 +370,16 @@ runReplacements state (String s) =
     Right _ -> mapRight String $ interpolateQueryString state s
     Left parseErr -> Left parseErr
 runReplacements _ valToUpdate = Right valToUpdate
+
+-- | Given an instance of both ToJSON and FromJSON return a new instance with
+-- interpolated values.
+-- NB: interpolateViaJSON assumes that fromJSON . toJSON is identity
+interpolateViaJSON :: (ToJSON a, FromJSON a) => CurlRunningsState -> a -> Either QueryError a
+interpolateViaJSON state i = do
+  replaced <- runReplacements state $ toJSON i
+  resultToEither $ fromJSON replaced where
+    resultToEither (Error e)   = Left $ QueryValidationError $ T.pack e
+    resultToEither (Success a) = Right a
 
 -- | Given a query string, return some text with interpolated values. Type
 -- errors will be returned if queries don't resolve to strings
@@ -493,10 +517,10 @@ traverseValue val =
 -- | Verify the returned http status code is ok, construct the right failure
 -- type if needed
 checkCode :: CurlCase -> Int -> Maybe AssertionFailure
-checkCode curlCase@(CurlCase _ _ _ _ _ _ (ExactCode expectedCode) _) receivedCode
+checkCode curlCase@(CurlCase _ _ _ _ _ _ _ (ExactCode expectedCode) _) receivedCode
   | expectedCode /= receivedCode = Just $ StatusFailure curlCase receivedCode
   | otherwise = Nothing
-checkCode curlCase@(CurlCase _ _ _ _ _ _ (AnyCodeIn l) _) receivedCode
+checkCode curlCase@(CurlCase _ _ _ _ _ _ _ (AnyCodeIn l) _) receivedCode
   | receivedCode `notElem` l = Just $ StatusFailure curlCase receivedCode
   | otherwise = Nothing
 
