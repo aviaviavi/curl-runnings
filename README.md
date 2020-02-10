@@ -126,12 +126,6 @@ tests:
       dockerfile: ./Dockerfile
 ```
 
-### Notes
-
-#### Timing
-
-Request timers will be printed with test results. This should be treated as a ballpark estimate.
-
 ### Contributing
 
 Contributions in any form are welcome and encouraged. Don't be shy! :D
