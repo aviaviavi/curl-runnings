@@ -21,11 +21,11 @@ module Testing.CurlRunnings.Internal
 
 import           Control.Monad
 import           Data.Monoid
-import qualified Data.Text             as T
-import qualified Data.Text.Lazy        as TL
-import           Data.Time.Clock.POSIX (getPOSIXTime)
+import qualified Data.Text          as T
+import qualified Data.Text.Lazy     as TL
 import           Debug.Trace
-import qualified Text.Pretty.Simple    as P
+import           System.Clock
+import qualified Text.Pretty.Simple as P
 import           Text.Printf
 
 
@@ -80,7 +80,9 @@ makeUnsafeLogger threshold level text object =
     else object
 
 nowMillis :: IO Integer
-nowMillis = (round . (* 1000)) <$> getPOSIXTime
+nowMillis = do
+  t <- getTime Realtime
+  return $ (toNanoSecs t) `div` 1000000
 
 roundToStr :: (PrintfArg a, Floating a) => a -> String
-roundToStr = printf "%0.1f"
+roundToStr = printf "%0.2f"
