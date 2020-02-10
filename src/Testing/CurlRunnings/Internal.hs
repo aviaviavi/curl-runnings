@@ -12,6 +12,8 @@ module Testing.CurlRunnings.Internal
   , makeLogger
   , makeUnsafeLogger
   , pShow
+  , nowMillis
+  , roundToStr
   , LogLevel(..)
   , CurlRunningsLogger
   , CurlRunningsUnsafeLogger
@@ -19,10 +21,13 @@ module Testing.CurlRunnings.Internal
 
 import           Control.Monad
 import           Data.Monoid
-import qualified Data.Text          as T
-import qualified Data.Text.Lazy     as TL
+import qualified Data.Text             as T
+import qualified Data.Text.Lazy        as TL
+import           Data.Time.Clock.POSIX (getPOSIXTime)
 import           Debug.Trace
-import qualified Text.Pretty.Simple as P
+import qualified Text.Pretty.Simple    as P
+import           Text.Printf
+
 
 makeGreen :: T.Text -> T.Text
 makeGreen s = "\x1B[32m" <> s <> "\x1B[0m"
@@ -73,3 +78,9 @@ makeUnsafeLogger threshold level text object =
   if level <= threshold
     then tracer text object
     else object
+
+nowMillis :: IO Integer
+nowMillis = (round . (* 1000)) <$> getPOSIXTime
+
+roundToStr :: (PrintfArg a, Floating a) => a -> String
+roundToStr = printf "%0.1f"

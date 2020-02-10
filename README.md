@@ -16,18 +16,18 @@ Haskell (though a Haskell setup is absolutely not required to use this tool).
 
 ### Why?
 
-This library came out of a pain-point my coworkers at
-[DotDashPay](https://dotdashpay.com) and I were running into during development:
-Writing integration tests for our APIs was generally annoying. They were time
-consuming to write especially considering how basic they were, and we are a
-small startup where developer time is in short supply. Over time, we found
-ourselves sometimes just writing bash scripts that would `curl` our various
-endpoints and check the output with very basic matchers. These tests were fast
-to write, but quickly became difficult to maintain as complexity was added. Not
-only did maintenance become challenging, but the whole system was very error prone
-and confidence in the tests overall was decreasing. At the end of the day, we
-needed to just curl some endpoints and verify the output looks sane, and do this
-quickly and correctly. This is precisely the goal of curl-runnings.
+This library came out of a pain-point my coworkers and I were running into
+during development: Writing integration tests for our APIs was generally
+annoying. They were time consuming to write especially considering how basic
+they were, and we are a small startup where developer time is in short supply.
+Over time, we found ourselves sometimes just writing bash scripts that would
+`curl` our various endpoints and check the output with very basic matchers.
+These tests were fast to write, but quickly became difficult to maintain as
+complexity was added. Not only did maintenance become challenging, but the whole
+system was very error prone and confidence in the tests overall was decreasing.
+At the end of the day, we needed to just curl some endpoints and verify the
+output looks sane, and do this quickly and correctly. This is precisely the goal
+of curl-runnings.
 
 Now you can write your tests just as data in a yaml or json file,
 and curl-runnings will take care of the rest!
@@ -126,6 +126,11 @@ tests:
       dockerfile: ./Dockerfile
 ```
 
+### Notes
+
+#### Timing
+
+Request timers will be printed with test results. This should be treated as a ballpark estimate.
 
 ### Contributing
 
