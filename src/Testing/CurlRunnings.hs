@@ -66,10 +66,16 @@ noVerifyTlsSettings =
   }
 
 -- | Fetch existing query parameters from the request and append those specfied in the queryParameters field.
-appendQueryParameters :: [QueryParameter] -> Request -> Request
+appendQueryParameters :: [KeyValuePair] -> Request -> Request
 appendQueryParameters newParams r = setQueryString (existing ++ newQuery) r where
   existing = NT.parseQuery $ queryString r
-  newQuery = NT.simpleQueryToQuery $ fmap (\(QueryParameter k v) -> (T.encodeUtf8 k, T.encodeUtf8 v)) newParams
+  newQuery = NT.simpleQueryToQuery $ fmap (\(KeyValuePair k v) -> (T.encodeUtf8 k, T.encodeUtf8 v)) newParams
+
+setPayload :: Maybe Payload -> Request -> Request
+setPayload Nothing = id
+setPayload (Just (JSON v)) = setRequestBodyJSON v
+setPayload (Just (URLEncoded (KeyValuePairs xs))) = setRequestBodyURLEncoded $ kvpairs xs where
+  kvpairs = fmap (\(KeyValuePair k v) -> (T.encodeUtf8 k, T.encodeUtf8 v))
 
 -- | Run a single test case, and returns the result. IO is needed here since this method is responsible
 -- for actually curling the test case endpoint and parsing the result.
@@ -78,7 +84,7 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
   let eInterpolatedUrl = interpolateQueryString state $ url curlCase
       eInterpolatedHeaders =
         interpolateHeaders state $ fromMaybe (HeaderSet []) (headers curlCase)
-      eInterpolatedQueryParams = interpolateViaJSON state $ fromMaybe (QueryParameters []) (queryParameters curlCase)
+      eInterpolatedQueryParams = interpolateViaJSON state $ fromMaybe (KeyValuePairs []) (queryParameters curlCase)
   case (eInterpolatedUrl, eInterpolatedHeaders, eInterpolatedQueryParams) of
     (Left err, _, _) ->
       return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err]
@@ -86,16 +92,16 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
       return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err]
     (_, _, Left err) ->
       return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err]
-    (Right interpolatedUrl, Right interpolatedHeaders, Right (QueryParameters interpolatedQueryParams)) ->
-      case sequence $ runReplacements state <$> requestData curlCase of
+    (Right interpolatedUrl, Right interpolatedHeaders, Right (KeyValuePairs interpolatedQueryParams)) ->
+      case sequence $ interpolateViaJSON state <$> requestData curlCase of
         Left l ->
           return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase l]
-        Right replacedJSON -> do
+        Right interpolatedData -> do
           initReq <- parseRequest $ T.unpack interpolatedUrl
           manager <- newManager noVerifyTlsManagerSettings
 
           let request =
-                setRequestBodyJSON (fromMaybe emptyObject replacedJSON) .
+                setPayload interpolatedData .
                 setRequestHeaders (toHTTPHeaders interpolatedHeaders) .
                 appendQueryParameters interpolatedQueryParams  .
                 (if tlsCheckType == DoTLSCheck then id else (setRequestManager manager)) $
@@ -105,7 +111,7 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
           logger
             state
             DEBUG
-            ("Request body: " <> (pShow $ fromMaybe emptyObject replacedJSON))
+            ("Request body: " <> (pShow $ fromMaybe (JSON emptyObject) interpolatedData))
           response <- httpBS request
           -- If the response is just returning bytes, we won't print them
           let responseHeaderValues = map snd (getResponseHeaders response)

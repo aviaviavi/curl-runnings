@@ -11,8 +11,9 @@ module Testing.CurlRunnings.Types
   , Header(..)
   , HeaderMatcher(..)
   , Headers(..)
-  , QueryParameter(..)
-  , QueryParameters(..)
+  , KeyValuePair(..)
+  , KeyValuePairs(..)
+  , Payload(..)
   , HttpMethod(..)
   , JsonMatcher(..)
   , JsonSubExpr(..)
@@ -47,6 +48,7 @@ import           GHC.Generics
 import           Testing.CurlRunnings.Internal
 import           Testing.CurlRunnings.Internal.Headers
 import           Text.Printf
+import qualified Data.Char as C
 
 -- | A basic enum for supported HTTP verbs
 data HttpMethod
@@ -190,28 +192,53 @@ instance FromJSON StatusCodeMatcher where
   parseJSON obj@(Array _)  = AnyCodeIn <$> parseJSON obj
   parseJSON invalid        = typeMismatch "StatusCodeMatcher" invalid
 
--- | A representation of a single query parameter
-data QueryParameter = QueryParameter T.Text T.Text deriving Show
+--- | A container for a list of key-value pairs
+newtype KeyValuePairs = KeyValuePairs [KeyValuePair] deriving Show
 
--- | A container for a list of query parameters
-newtype QueryParameters = QueryParameters [QueryParameter] deriving Show
+--- | A representation of a single key-value pair
+data KeyValuePair = KeyValuePair T.Text T.Text deriving Show
 
-instance ToJSON QueryParameters where
-  toJSON (QueryParameters qs) =
-    object (fmap (\(QueryParameter k v) -> k .= toJSON v) qs)
+instance ToJSON KeyValuePairs where
+  toJSON (KeyValuePairs qs) =
+    object (fmap (\(KeyValuePair k v) -> k .= toJSON v) qs)
 
-instance FromJSON QueryParameters where
-  parseJSON = withObject "queryParameters" parseQueryParameters where
-    parseQueryParameters o = QueryParameters <$> traverse parseQueryParameter (H.toList o)
-    parseQueryParameter (t, v) = withText "queryParameterKey" (\parsed -> return $ QueryParameter t parsed) v
+instance FromJSON KeyValuePairs where
+  parseJSON = withObject "keyValuePairs" parseKeyValuePairs where
+    parseKeyValuePairs o = KeyValuePairs <$> traverse parseKeyValuePair (H.toList o)
+    parseKeyValuePair (t, v) = withText "key" (\parsed -> return $ KeyValuePair t parsed) v
+
+data Payload = JSON Value | URLEncoded KeyValuePairs deriving Generic
+
+instance Show Payload where
+  show (JSON v) = show v
+  show (URLEncoded (KeyValuePairs xs)) = T.unpack $ T.intercalate "&" $ fmap (\(KeyValuePair k v) -> k <> "=" <> v) xs
+
+payloadTagFieldName :: T.Text
+payloadTagFieldName = "bodyType"
+
+payloadContentsFieldName :: T.Text
+payloadContentsFieldName = "content"
+
+instance FromJSON Payload where
+  parseJSON v = withObject "payload" parsePayload v where
+    parsePayload o = if not (H.member payloadTagFieldName o) then return (JSON v) else genericParseJSON payloadOptions v
+    payloadOptions = defaultOptions { sumEncoding = TaggedObject { tagFieldName = T.unpack payloadTagFieldName
+                                                                 , contentsFieldName = T.unpack payloadContentsFieldName
+                                                                 }
+                                    , constructorTagModifier = fmap C.toLower
+                                    }
+
+instance ToJSON Payload where
+  toJSON (JSON v) = object [(payloadTagFieldName, "json"), (payloadContentsFieldName, toJSON v)]
+  toJSON (URLEncoded xs) = object [(payloadTagFieldName, "urlencoded"), (payloadContentsFieldName, toJSON xs)]
 
 -- | A single curl test case, the basic foundation of a curl-runnings test.
 data CurlCase = CurlCase
   { name            :: T.Text -- ^ The name of the test case
   , url             :: T.Text -- ^ The target url to test
   , requestMethod   :: HttpMethod -- ^ Verb to use for the request
-  , requestData     :: Maybe Value -- ^ Payload to send with the request, if any
-  , queryParameters :: Maybe QueryParameters -- ^ Query parameters to set in the request, if any
+  , requestData     :: Maybe Payload -- ^ Payload to send with the request, if any
+  , queryParameters :: Maybe KeyValuePairs -- ^ Query parameters to set in the request, if any
   , headers         :: Maybe Headers -- ^ Headers to send with the request, if any
   , expectData      :: Maybe JsonMatcher -- ^ The assertions to make on the response payload, if any
   , expectStatus    :: StatusCodeMatcher -- ^ Assertion about the status code returned by the target
