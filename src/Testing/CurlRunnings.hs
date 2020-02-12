@@ -1,5 +1,9 @@
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns             #-}
+{-# LANGUAGE DisambiguateRecordFields #-}
+{-# LANGUAGE NamedFieldPuns           #-}
+{-# LANGUAGE OverloadedStrings        #-}
+{-# LANGUAGE ScopedTypeVariables      #-}
+
 
 -- | curl-runnings is a framework for writing declaratively writing curl based tests for your API's.
 -- Write your test specifications with yaml or json, and you're done!
@@ -23,6 +27,7 @@ import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text                            as T
 import qualified Data.Text.Encoding                   as T
+import           Data.Time.Clock
 import qualified Data.Vector                          as V
 import qualified Data.Yaml.Include                    as YI
 import           Network.Connection                   (TLSSettings (..))
@@ -81,32 +86,35 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
       eInterpolatedQueryParams = interpolateViaJSON state $ fromMaybe (QueryParameters []) (queryParameters curlCase)
   case (eInterpolatedUrl, eInterpolatedHeaders, eInterpolatedQueryParams) of
     (Left err, _, _) ->
-      return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err]
+      return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err] 0
     (_, Left err, _) ->
-      return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err]
+      return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err] 0
     (_, _, Left err) ->
-      return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err]
+      return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase err] 0
     (Right interpolatedUrl, Right interpolatedHeaders, Right (QueryParameters interpolatedQueryParams)) ->
       case sequence $ runReplacements state <$> requestData curlCase of
         Left l ->
-          return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase l]
+          return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase l] 0
         Right replacedJSON -> do
           initReq <- parseRequest $ T.unpack interpolatedUrl
           manager <- newManager noVerifyTlsManagerSettings
 
-          let request =
-                setRequestBodyJSON (fromMaybe emptyObject replacedJSON) .
-                setRequestHeaders (toHTTPHeaders interpolatedHeaders) .
-                appendQueryParameters interpolatedQueryParams  .
-                (if tlsCheckType == DoTLSCheck then id else (setRequestManager manager)) $
-                initReq {method = B8S.pack . show $ requestMethod curlCase}
+          let !request =
+                  setRequestBodyJSON (fromMaybe emptyObject replacedJSON) .
+                  setRequestHeaders (toHTTPHeaders interpolatedHeaders) .
+                  appendQueryParameters interpolatedQueryParams  .
+                  (if tlsCheckType == DoTLSCheck then id else (setRequestManager manager)) $
+                  initReq {method = B8S.pack . show $ requestMethod curlCase}
 
           logger state DEBUG (pShow request)
           logger
             state
             DEBUG
             ("Request body: " <> (pShow $ fromMaybe emptyObject replacedJSON))
+          start <- nowMillis
           response <- httpBS request
+          stop <- nowMillis
+          let elapsed = stop - start
           -- If the response is just returning bytes, we won't print them
           let responseHeaderValues = map snd (getResponseHeaders response)
           if "application/octet-stream" `notElem` responseHeaderValues &&
@@ -141,9 +149,9 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
                   ]
           return $
             case assertionErrors of
-              [] -> CasePass curlCase (Just receivedHeaders) returnVal
+              [] -> CasePass curlCase (Just receivedHeaders) returnVal elapsed
               failures ->
-                CaseFail curlCase (Just receivedHeaders) returnVal failures
+                CaseFail curlCase (Just receivedHeaders) returnVal failures elapsed
 
 checkHeaders ::
      CurlRunningsState -> CurlCase -> Headers -> Maybe AssertionFailure
@@ -420,9 +428,9 @@ getValueForQuery (CurlRunningsState _ previousResults _ _) full@(NonInterpolated
     (CaseResultIndex i) ->
       let maybeCase = arrayGet previousResults $ fromInteger i
       in if isJust maybeCase
-           then let (CasePass _ _ returnedJSON) = fromJust maybeCase
+           then let CasePass{caseResponseValue} = fromJust maybeCase
                     jsonToIndex =
-                      case returnedJSON of
+                      case caseResponseValue of
                         Just v -> Right v
                         Nothing ->
                           Left $
