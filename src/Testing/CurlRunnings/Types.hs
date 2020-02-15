@@ -1,5 +1,7 @@
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric            #-}
+{-# LANGUAGE DisambiguateRecordFields #-}
+{-# LANGUAGE NamedFieldPuns           #-}
+{-# LANGUAGE OverloadedStrings        #-}
 
 -- | Data types for curl-runnings tests
 
@@ -347,22 +349,31 @@ instance Show AssertionFailure where
     printf "JSON query error in spec %s: %s" (name curlCase) (show queryErr)
   show UnexpectedFailure = "Unexpected Error D:"
 
+formatSecToMS :: Integer -> String
+formatSecToMS t = roundToStr ((fromIntegral t :: Double) / 1000.0)
+
 -- | A type representing the result of a single curl, and all associated
 -- assertions
 data CaseResult
-  = CasePass CurlCase
-             (Maybe Headers)
-             (Maybe Value)
-  | CaseFail CurlCase
-             (Maybe Headers)
-             (Maybe Value)
-             [AssertionFailure]
-
+  = CasePass
+      { curlCase            :: CurlCase
+      , caseResponseHeaders :: Maybe Headers
+      , caseResponseValue   :: Maybe Value
+      , elapsedTime         :: Integer -- ^ Elapsed time
+      }
+  | CaseFail
+      { curlCase            :: CurlCase
+      , caseResponseHeaders :: Maybe Headers
+      , caseResponseValue   :: Maybe Value
+      , failures            :: [AssertionFailure]
+      , elapsedTime         :: Integer -- ^ Elapsed time
+      }
 instance Show CaseResult where
-  show (CasePass c _ _) = T.unpack . makeGreen $ "[PASS] " <> name c
-  show (CaseFail c _ _ failures) =
+  show CasePass{curlCase, elapsedTime} = T.unpack . makeGreen $ "[PASS] " <> (T.pack $ printf "%s (%s seconds)" (name curlCase) (formatSecToMS elapsedTime))
+  show CaseFail{curlCase, failures, elapsedTime} =
     T.unpack $ makeRed "[FAIL] " <>
-    name c <>
+    name curlCase <>
+    (T.pack $ printf " (%s seconds) " (formatSecToMS elapsedTime)) <>
     "\n" <>
     mconcat (map ((\s -> "\nAssertion failed: " <> s) . (<> "\n") . (T.pack . show)) failures)
 
