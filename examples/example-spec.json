@@ -3,6 +3,9 @@
     "name": "test 1",
     "url": "http://your-endpoint.com/status",
     "requestMethod": "GET",
+    "queryParameters": {
+       "key": "value"
+    },
     "expectData": {
       "exactly": {
         "okay": true,
