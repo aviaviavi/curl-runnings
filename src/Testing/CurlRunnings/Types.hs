@@ -49,6 +49,7 @@ import           GHC.Generics
 import           Testing.CurlRunnings.Internal
 import           Testing.CurlRunnings.Internal.Headers
 import           Testing.CurlRunnings.Internal.KeyValuePairs
+import           Testing.CurlRunnings.Internal.Payload
 import           Text.Printf
 
 -- | A basic enum for supported HTTP verbs
@@ -192,31 +193,6 @@ instance FromJSON StatusCodeMatcher where
   parseJSON obj@(Number _) = ExactCode <$> parseJSON obj
   parseJSON obj@(Array _)  = AnyCodeIn <$> parseJSON obj
   parseJSON invalid        = typeMismatch "StatusCodeMatcher" invalid
-
-data Payload = JSON Value | URLEncoded KeyValuePairs deriving Generic
-
-instance Show Payload where
-  show (JSON v) = show v
-  show (URLEncoded (KeyValuePairs xs)) = T.unpack $ T.intercalate "&" $ fmap (\(KeyValuePair k v) -> k <> "=" <> v) xs
-
-payloadTagFieldName :: T.Text
-payloadTagFieldName = "bodyType"
-
-payloadContentsFieldName :: T.Text
-payloadContentsFieldName = "content"
-
-instance FromJSON Payload where
-  parseJSON v = withObject "payload" parsePayload v where
-    parsePayload o = if not (H.member payloadTagFieldName o) then return (JSON v) else genericParseJSON payloadOptions v
-    payloadOptions = defaultOptions { sumEncoding = TaggedObject { tagFieldName = T.unpack payloadTagFieldName
-                                                                 , contentsFieldName = T.unpack payloadContentsFieldName
-                                                                 }
-                                    , constructorTagModifier = fmap C.toLower
-                                    }
-
-instance ToJSON Payload where
-  toJSON (JSON v) = object [(payloadTagFieldName, "json"), (payloadContentsFieldName, toJSON v)]
-  toJSON (URLEncoded xs) = object [(payloadTagFieldName, "urlencoded"), (payloadContentsFieldName, toJSON xs)]
 
 -- | A single curl test case, the basic foundation of a curl-runnings test.
 data CurlCase = CurlCase
