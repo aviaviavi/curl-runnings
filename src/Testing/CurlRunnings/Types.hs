@@ -39,18 +39,17 @@ module Testing.CurlRunnings.Types
 
 import           Data.Aeson
 import           Data.Aeson.Types
-import           Data.Either
-import qualified Data.HashMap.Strict                   as H
-import           Data.List
+import qualified Data.Char                                   as C
+import qualified Data.HashMap.Strict                         as H
 import           Data.Maybe
 import           Data.Monoid
-import qualified Data.Text                             as T
-import qualified Data.Vector                           as V
+import qualified Data.Text                                   as T
+import qualified Data.Vector                                 as V
 import           GHC.Generics
 import           Testing.CurlRunnings.Internal
 import           Testing.CurlRunnings.Internal.Headers
+import           Testing.CurlRunnings.Internal.KeyValuePairs
 import           Text.Printf
-import qualified Data.Char as C
 
 -- | A basic enum for supported HTTP verbs
 data HttpMethod
@@ -193,21 +192,6 @@ instance FromJSON StatusCodeMatcher where
   parseJSON obj@(Number _) = ExactCode <$> parseJSON obj
   parseJSON obj@(Array _)  = AnyCodeIn <$> parseJSON obj
   parseJSON invalid        = typeMismatch "StatusCodeMatcher" invalid
-
---- | A container for a list of key-value pairs
-newtype KeyValuePairs = KeyValuePairs [KeyValuePair] deriving Show
-
---- | A representation of a single key-value pair
-data KeyValuePair = KeyValuePair T.Text T.Text deriving Show
-
-instance ToJSON KeyValuePairs where
-  toJSON (KeyValuePairs qs) =
-    object (fmap (\(KeyValuePair k v) -> k .= toJSON v) qs)
-
-instance FromJSON KeyValuePairs where
-  parseJSON = withObject "keyValuePairs" parseKeyValuePairs where
-    parseKeyValuePairs o = KeyValuePairs <$> traverse parseKeyValuePair (H.toList o)
-    parseKeyValuePair (t, v) = withText "key" (\parsed -> return $ KeyValuePair t parsed) v
 
 data Payload = JSON Value | URLEncoded KeyValuePairs deriving Generic
 

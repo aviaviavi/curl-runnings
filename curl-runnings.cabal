@@ -37,6 +37,7 @@ library
       Testing.CurlRunnings.Internal
       Testing.CurlRunnings.Internal.Parser
       Testing.CurlRunnings.Internal.Headers
+      Testing.CurlRunnings.Internal.KeyValuePairs
   other-modules:
       Paths_curl_runnings
   hs-source-dirs:
