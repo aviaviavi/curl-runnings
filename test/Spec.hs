@@ -16,6 +16,7 @@ import           Testing.CurlRunnings.Internal
 import           Testing.CurlRunnings.Internal.Headers
 import           Testing.CurlRunnings.Internal.KeyValuePairs
 import           Testing.CurlRunnings.Internal.Parser
+import           Testing.CurlRunnings.Internal.Payload
 import           Text.RawString.QQ
 
 main :: IO ()
@@ -119,6 +120,23 @@ main = hspec $
     decodeKeyValuePair [r|{"key": {"nestedKey": true}}|] `shouldSatisfy` isLeft
     decodeKeyValuePair [r|{"key1": "a", "key2": {"nestedKey": true}}|] `shouldSatisfy` isLeft
 
+  it "should decode request body" $ do
+    decodePayload [r|{"bodyType": "urlencoded", "content": {"key1": "value1"}}|] `shouldSatisfy` isURLEncoded
+    decodePayload [r|{"bodyType": "json", "content": {"key1": "value1"}}|] `shouldSatisfy` isJSON
+    decodePayload [r|{"bodyType": "json", "content": ["key1", "value1"]}|] `shouldSatisfy` isJSON
+    decodePayload [r|{"content": {"key1": "value1"}}|] `shouldSatisfy` isJSON
+    decodePayload [r|{"other": {"key1": "value1"}}|] `shouldSatisfy` isJSON
+    decodePayload [r|{"other": ["key1", "value1"]}|] `shouldSatisfy` isJSON
+    -- "other" is ignored
+    decodePayload [r|{"bodyType": "json", "content": {"a": "b"}, "other": 1}|] `shouldSatisfy` isJSON
+    decodePayload [r|{"bodytype": "urlencoded", "content": ["key1", "value1"]}|] `shouldSatisfy` isJSON
+
+  it "should not decode invalid request body" $ do
+    decodePayload [r|{"bodyType": "plain", "content": {"key1": "value1"}}|] `shouldSatisfy` isLeft
+    decodePayload [r|{"bodyType": "urlencoded"}|] `shouldSatisfy` isLeft
+    decodePayload [r|{"bodyType": "json"}|] `shouldSatisfy` isLeft
+    decodePayload [r|{"bodyType": "urlencoded", "content": ["key1", "value1"]}|] `shouldSatisfy` isLeft
+
 testValidSpec :: String -> IO ()
 testValidSpec file = do
   currentDirectory <- getCurrentDirectory
@@ -127,6 +145,9 @@ testValidSpec file = do
 
 decodeKeyValuePair :: ByteString -> Either String KeyValuePairs
 decodeKeyValuePair = eitherDecodeStrict
+
+decodePayload :: ByteString -> Either String Payload
+decodePayload = eitherDecodeStrict
 
 shouldBeHeaders :: (Eq a, Show a) => Either a Headers -> [(T.Text, T.Text)] -> Expectation
 shouldBeHeaders actual expected =
@@ -143,3 +164,11 @@ deriving instance Eq KeyValuePair
 -- KeyValuePairs should be considered equal if they contain the same elements.
 instance Eq KeyValuePairs where
   (==) (KeyValuePairs x) (KeyValuePairs y) = null (x \\ y) && null (y \\ x)
+
+isURLEncoded :: Either String Payload -> Bool
+isURLEncoded (Right (URLEncoded _)) = True
+isURLEncoded _                      = False
+
+isJSON :: Either String Payload -> Bool
+isJSON (Right (JSON _)) = True
+isJSON _                = False

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f2b160d8c30b0853d08add9a9da5e3917e03f2dec5399d7ed43985f1d042c1d4
+-- hash: 47e14a53d64cd8b70caa137bf6d6d5d667b4b75064f6cebc3ed82c11072d6258
 
 name:           curl-runnings
 version:        0.11.1
@@ -38,6 +38,7 @@ library
       Testing.CurlRunnings.Internal.Parser
       Testing.CurlRunnings.Internal.Headers
       Testing.CurlRunnings.Internal.KeyValuePairs
+      Testing.CurlRunnings.Internal.Payload
   other-modules:
       Paths_curl_runnings
   hs-source-dirs:
