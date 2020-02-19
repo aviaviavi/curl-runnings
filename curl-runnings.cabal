@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d7e8fd8b9ac832b7f655ad0afb08922e6d81f002810f33a8785f57504b9e38f3
+-- hash: 47e14a53d64cd8b70caa137bf6d6d5d667b4b75064f6cebc3ed82c11072d6258
 
 name:           curl-runnings
 version:        0.11.1
@@ -37,6 +37,8 @@ library
       Testing.CurlRunnings.Internal
       Testing.CurlRunnings.Internal.Parser
       Testing.CurlRunnings.Internal.Headers
+      Testing.CurlRunnings.Internal.KeyValuePairs
+      Testing.CurlRunnings.Internal.Payload
   other-modules:
       Paths_curl_runnings
   hs-source-dirs:
@@ -93,10 +95,13 @@ test-suite curl-runnings-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.0 && <5
+      aeson >=1.2.4.0
+    , base >=4.0 && <5
+    , bytestring >=0.10.8.2
     , curl-runnings
     , directory >=1.3.0.2
     , hspec >=2.4.4
     , hspec-expectations >=0.8.2
+    , raw-strings-qq >=1.1
     , text >=1.2.2.2
   default-language: Haskell2010

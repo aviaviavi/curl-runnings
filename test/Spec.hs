@@ -1,15 +1,23 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE QuasiQuotes        #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Main where
 
+import           Data.Aeson
+import           Data.ByteString                             (ByteString)
 import           Data.Either
-import qualified Data.Text                                  as T
+import           Data.List
+import qualified Data.Text                                   as T
 import           System.Directory
 import           Test.Hspec
 import           Testing.CurlRunnings
 import           Testing.CurlRunnings.Internal
 import           Testing.CurlRunnings.Internal.Headers
+import           Testing.CurlRunnings.Internal.KeyValuePairs
 import           Testing.CurlRunnings.Internal.Parser
+import           Testing.CurlRunnings.Internal.Payload
+import           Text.RawString.QQ
 
 main :: IO ()
 main = hspec $
@@ -93,13 +101,74 @@ main = hspec $
     (arrayGet b 1) `shouldBe` Nothing
     (arrayGet b (-1)) `shouldBe` Nothing
 
+  it "should decode valid key-value pairs" $ do
+    [r|{"key": "value"}|] `shouldBeKeyValuePairs` [("key", "value")]
+    [r|{"key": 1}|] `shouldBeKeyValuePairs` [("key", "1")]
+    [r|{"key": 9.999}|] `shouldBeKeyValuePairs` [("key", "9.999")]
+    [r|{"key": true}|] `shouldBeKeyValuePairs` [("key", "true")]
+    [r|{"key1": 10, "key2": "a", "key3": 1.1, "key4": false}|]
+      `shouldBeKeyValuePairs`
+      [ ("key1", "10")
+      , ("key2", "a")
+      , ("key3", "1.1")
+      , ("key4", "false")
+      ]
+
+  it "should not decode invalid key-value pairs" $ do
+    decodeKeyValuePair [r|{"key": null}|] `shouldSatisfy` isLeft
+    decodeKeyValuePair [r|{"key": [1, "1"]}|] `shouldSatisfy` isLeft
+    decodeKeyValuePair [r|{"key": {"nestedKey": true}}|] `shouldSatisfy` isLeft
+    decodeKeyValuePair [r|{"key1": "a", "key2": {"nestedKey": true}}|] `shouldSatisfy` isLeft
+
+  it "should decode request body" $ do
+    decodePayload [r|{"bodyType": "urlencoded", "content": {"key1": "value1"}}|] `shouldSatisfy` isURLEncoded
+    decodePayload [r|{"bodyType": "json", "content": {"key1": "value1"}}|] `shouldSatisfy` isJSON
+    decodePayload [r|{"bodyType": "json", "content": ["key1", "value1"]}|] `shouldSatisfy` isJSON
+    decodePayload [r|{"content": {"key1": "value1"}}|] `shouldSatisfy` isJSON
+    decodePayload [r|{"other": {"key1": "value1"}}|] `shouldSatisfy` isJSON
+    decodePayload [r|{"other": ["key1", "value1"]}|] `shouldSatisfy` isJSON
+    -- "other" is ignored
+    decodePayload [r|{"bodyType": "json", "content": {"a": "b"}, "other": 1}|] `shouldSatisfy` isJSON
+    decodePayload [r|{"bodytype": "urlencoded", "content": ["key1", "value1"]}|] `shouldSatisfy` isJSON
+
+  it "should not decode invalid request body" $ do
+    decodePayload [r|{"bodyType": "plain", "content": {"key1": "value1"}}|] `shouldSatisfy` isLeft
+    decodePayload [r|{"bodyType": "urlencoded"}|] `shouldSatisfy` isLeft
+    decodePayload [r|{"bodyType": "json"}|] `shouldSatisfy` isLeft
+    decodePayload [r|{"bodyType": "urlencoded", "content": ["key1", "value1"]}|] `shouldSatisfy` isLeft
+
 testValidSpec :: String -> IO ()
 testValidSpec file = do
   currentDirectory <- getCurrentDirectory
   spec <- decodeFile (currentDirectory ++ file)
   spec `shouldSatisfy` isRight
 
+decodeKeyValuePair :: ByteString -> Either String KeyValuePairs
+decodeKeyValuePair = eitherDecodeStrict
+
+decodePayload :: ByteString -> Either String Payload
+decodePayload = eitherDecodeStrict
+
 shouldBeHeaders :: (Eq a, Show a) => Either a Headers -> [(T.Text, T.Text)] -> Expectation
 shouldBeHeaders actual expected =
   let expectedHeaders = Right . HeaderSet $ uncurry Header <$> expected in
     actual `shouldBe` expectedHeaders
+
+shouldBeKeyValuePairs :: ByteString -> [(T.Text, T.Text)] -> Expectation
+shouldBeKeyValuePairs json expected = actual `shouldBe` expectedKeyValuePairs where
+  actual = eitherDecodeStrict json
+  expectedKeyValuePairs = Right . KeyValuePairs $ uncurry KeyValuePair <$> expected
+
+deriving instance Eq KeyValuePair
+
+-- KeyValuePairs should be considered equal if they contain the same elements.
+instance Eq KeyValuePairs where
+  (==) (KeyValuePairs x) (KeyValuePairs y) = null (x \\ y) && null (y \\ x)
+
+isURLEncoded :: Either String Payload -> Bool
+isURLEncoded (Right (URLEncoded _)) = True
+isURLEncoded _                      = False
+
+isJSON :: Either String Payload -> Bool
+isJSON (Right (JSON _)) = True
+isJSON _                = False

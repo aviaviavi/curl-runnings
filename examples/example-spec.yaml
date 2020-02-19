@@ -34,6 +34,22 @@ cases:
       num: 1
 
   - name: test 3
+    url: http://your-endpoint.com/path
+    requestMethod: POST
+    expectStatus:
+    - 200
+    - 201
+    # [Optional] Data to send with the request.
+    requestData:
+      # `bodyType` specifies the type of request payload. Possible values
+      # are `urlencoded` | `json`.
+      bodyType: urlencoded
+      content:
+        # This object specifies the data to send with the request.
+        hello: there
+        num: 1
+
+  - name: test 4
     url: http://your-url.com/other/path
     requestMethod: GET
     expectData:
@@ -54,7 +70,7 @@ cases:
       - keyMatch: okay
     expectStatus: 200
 
-  - name: test 4
+  - name: test 5
     url: http://your-url.com/other/path
     requestMethod: GET
     expectData:
@@ -70,7 +86,7 @@ cases:
       - keyMatch: error
     expectStatus: 200
 
-  - name: test 5
+  - name: test 6
     url: http://your-url.com/other/path
     requestMethod: GET
     expectData:
@@ -83,7 +99,7 @@ cases:
       - valueMatch: false
     expectStatus: 200
 
-  - name: test 6
+  - name: test 7
     url: http://your-url.com/other/path
     requestMethod: GET
     # Specify the headers you want to sent, just like the -H flag in a curl command
@@ -94,7 +110,7 @@ cases:
     # Header strings again match the -H syntax from curl
     expectHeaders: "Content-Type: application/json; Hello: world"
 
-  - name: test 7
+  - name: test 8
     url: http://your-url.com/other/path
     requestMethod: GET
     headers: "Content-Type: application/json"
@@ -104,7 +120,7 @@ cases:
     -
       key: "Key-With-Val-We-Dont-Care-About"
 
-  - name: test 8
+  - name: test 9
     url: http://your-url.com/other/path
     requestMethod: GET
     headers: "Content-Type: application/json"
@@ -114,4 +130,3 @@ cases:
     - "Hello: world"
     -
       value: "Value-With-Key-We-Dont-Care-About"
-

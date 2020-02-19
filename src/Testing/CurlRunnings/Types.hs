@@ -13,8 +13,9 @@ module Testing.CurlRunnings.Types
   , Header(..)
   , HeaderMatcher(..)
   , Headers(..)
-  , QueryParameter(..)
-  , QueryParameters(..)
+  , KeyValuePair(..)
+  , KeyValuePairs(..)
+  , Payload(..)
   , HttpMethod(..)
   , JsonMatcher(..)
   , JsonSubExpr(..)
@@ -38,16 +39,17 @@ module Testing.CurlRunnings.Types
 
 import           Data.Aeson
 import           Data.Aeson.Types
-import           Data.Either
-import qualified Data.HashMap.Strict                   as H
-import           Data.List
+import qualified Data.Char                                   as C
+import qualified Data.HashMap.Strict                         as H
 import           Data.Maybe
 import           Data.Monoid
-import qualified Data.Text                             as T
-import qualified Data.Vector                           as V
+import qualified Data.Text                                   as T
+import qualified Data.Vector                                 as V
 import           GHC.Generics
 import           Testing.CurlRunnings.Internal
 import           Testing.CurlRunnings.Internal.Headers
+import           Testing.CurlRunnings.Internal.KeyValuePairs
+import           Testing.CurlRunnings.Internal.Payload
 import           Text.Printf
 
 -- | A basic enum for supported HTTP verbs
@@ -192,28 +194,13 @@ instance FromJSON StatusCodeMatcher where
   parseJSON obj@(Array _)  = AnyCodeIn <$> parseJSON obj
   parseJSON invalid        = typeMismatch "StatusCodeMatcher" invalid
 
--- | A representation of a single query parameter
-data QueryParameter = QueryParameter T.Text T.Text deriving Show
-
--- | A container for a list of query parameters
-newtype QueryParameters = QueryParameters [QueryParameter] deriving Show
-
-instance ToJSON QueryParameters where
-  toJSON (QueryParameters qs) =
-    object (fmap (\(QueryParameter k v) -> k .= toJSON v) qs)
-
-instance FromJSON QueryParameters where
-  parseJSON = withObject "queryParameters" parseQueryParameters where
-    parseQueryParameters o = QueryParameters <$> traverse parseQueryParameter (H.toList o)
-    parseQueryParameter (t, v) = withText "queryParameterKey" (\parsed -> return $ QueryParameter t parsed) v
-
 -- | A single curl test case, the basic foundation of a curl-runnings test.
 data CurlCase = CurlCase
   { name            :: T.Text -- ^ The name of the test case
   , url             :: T.Text -- ^ The target url to test
   , requestMethod   :: HttpMethod -- ^ Verb to use for the request
-  , requestData     :: Maybe Value -- ^ Payload to send with the request, if any
-  , queryParameters :: Maybe QueryParameters -- ^ Query parameters to set in the request, if any
+  , requestData     :: Maybe Payload -- ^ Payload to send with the request, if any
+  , queryParameters :: Maybe KeyValuePairs -- ^ Query parameters to set in the request, if any
   , headers         :: Maybe Headers -- ^ Headers to send with the request, if any
   , expectData      :: Maybe JsonMatcher -- ^ The assertions to make on the response payload, if any
   , expectStatus    :: StatusCodeMatcher -- ^ Assertion about the status code returned by the target

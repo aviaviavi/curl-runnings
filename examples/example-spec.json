@@ -3,6 +3,9 @@
     "name": "test 1",
     "url": "http://your-endpoint.com/status",
     "requestMethod": "GET",
+    "queryParameters": {
+       "key": "value"
+    },
     "expectData": {
       "exactly": {
         "okay": true,
@@ -26,6 +29,22 @@
   },
   {
     "name": "test 3",
+    "url": "http://your-endpoint.com/path",
+    "requestMethod": "POST",
+    "expectStatus": [
+      200,
+      201
+    ],
+    "requestData": {
+      "bodyType": "urlencoded",
+      "content": {
+        "hello": "there",
+        "num": 1
+      }
+    }
+  },
+  {
+    "name": "test 4",
     "url": "http://your-url.com/other/path",
     "requestMethod": "GET",
     "expectData": {
@@ -44,7 +63,7 @@
     "expectStatus": 200
   },
   {
-    "name": "test 4",
+    "name": "test 5",
     "url": "http://your-url.com/other/path",
     "requestMethod": "GET",
     "expectData": {
@@ -63,7 +82,7 @@
     "expectStatus": 200
   },
   {
-    "name": "test 5",
+    "name": "test 6",
     "url": "http://your-url.com/other/path",
     "requestMethod": "GET",
     "expectData": {
@@ -84,7 +103,7 @@
     "expectStatus": 200
   },
   {
-    "name": "test 6",
+    "name": "test 7",
     "url": "http://your-url.com/other/path",
     "requestMethod": "GET",
     "headers": "Content-Type: application/json",
@@ -92,7 +111,7 @@
     "expectHeaders": "Content-Type: application/json; Hello: world"
   },
   {
-    "name": "test 7",
+    "name": "test 8",
     "url": "http://your-url.com/other/path",
     "requestMethod": "GET",
     "headers": "Content-Type: application/json",
@@ -104,7 +123,7 @@
     ]
   },
   {
-    "name": "test 8",
+    "name": "test 9",
     "url": "http://your-url.com/other/path",
     "requestMethod": "GET",
     "headers": "Content-Type: application/json",
