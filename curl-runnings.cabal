@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 184f34d36c0d081262571516a7ddbef911407a4dc5c3c08f6b67982a7d30d485
+-- hash: 36f3a328f46ddf05fd9e94383935542233bc1674c49698580add7c9ef9473fe0
 
 name:           curl-runnings
-version:        0.12.0
+version:        0.13.0
 synopsis:       A framework for declaratively writing curl based API tests
 description:    Please see the README on Github at <https://github.com/aviaviavi/curl-runnings#readme>
 category:       Testing

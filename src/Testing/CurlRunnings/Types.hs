@@ -129,12 +129,15 @@ data QueryError
   -- | Tried to access a value in a null object.
   | NullPointer T.Text -- full query
                 T.Text -- message
+                deriving (Generic)
 
 instance Show QueryError where
   show (QueryParseError t q) = printf "error parsing query %s: %s" q $ T.unpack t
   show (NullPointer full part) = printf "null pointer in %s at %s" (T.unpack full) $ T.unpack part
   show (QueryTypeMismatch message val) = printf "type error: %s %s" message $ show val
   show (QueryValidationError message) = printf "invalid query: %s" message
+
+instance ToJSON QueryError
 
 instance FromJSON HeaderMatcher where
   parseJSON o@(String v) =
@@ -232,8 +235,9 @@ data AssertionFailure
   | QueryFailure CurlCase
                  QueryError
   -- | Something else
-  | UnexpectedFailure
+  | UnexpectedFailure deriving (Generic)
 
+instance ToJSON AssertionFailure
 
 colorizeExpects :: String -> String
 colorizeExpects t =
@@ -327,7 +331,8 @@ data CaseResult
       , caseResponseValue   :: Maybe Value
       , failures            :: [AssertionFailure]
       , elapsedTime         :: Integer -- ^ Elapsed time
-      }
+      } deriving (Generic)
+
 instance Show CaseResult where
   show CasePass{curlCase, elapsedTime} = T.unpack . makeGreen $ "[PASS] " <> (T.pack $ printf "%s (%s seconds)" (name curlCase) (formatSecToMS elapsedTime))
   show CaseFail{curlCase, failures, elapsedTime} =
@@ -336,6 +341,25 @@ instance Show CaseResult where
     (T.pack $ printf " (%s seconds) " (formatSecToMS elapsedTime)) <>
     "\n" <>
     mconcat (map ((\s -> "\nAssertion failed: " <> s) . (<> "\n") . (T.pack . show)) failures)
+
+instance ToJSON CaseResult where
+  toJSON CasePass {curlCase, caseResponseHeaders, caseResponseValue, elapsedTime} =
+    object
+      [ "testPassed" .= (Bool True)
+      , "case" .= curlCase
+      , "responseHeaders" .= caseResponseHeaders
+      , "responseValue" .= caseResponseValue
+      , "elapsedTime" .= elapsedTime
+      ]
+  toJSON CaseFail {curlCase, caseResponseHeaders, caseResponseValue, elapsedTime, failures} =
+    object
+      [ "testPassed" .= (Bool False)
+      , "case" .= curlCase
+      , "responseHeaders" .= caseResponseHeaders
+      , "responseValue" .= caseResponseValue
+      , "elapsedTime" .= elapsedTime
+      , "failures" .= failures
+      ]
 
 -- | A wrapper type around a set of test cases. This is the top level spec type
 -- that we parse a test spec file into
