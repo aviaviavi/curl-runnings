@@ -211,7 +211,6 @@ main = do
         if skip_tls_check userArgs
           then SkipTLSCheck
           else DoTLSCheck
-  print (json_output userArgs)
   if upgrade userArgs
     then upgradeCurlRunnings
     else runFile

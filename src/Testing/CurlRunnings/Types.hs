@@ -313,9 +313,6 @@ instance Show AssertionFailure where
     printf "JSON query error in spec %s: %s" (name curlCase) (show queryErr)
   show UnexpectedFailure = "Unexpected Error D:"
 
-formatSecToMS :: Integer -> String
-formatSecToMS t = roundToStr ((fromIntegral t :: Double) / 1000.0)
-
 -- | A type representing the result of a single curl, and all associated
 -- assertions
 data CaseResult
@@ -334,11 +331,11 @@ data CaseResult
       } deriving (Generic)
 
 instance Show CaseResult where
-  show CasePass{curlCase, elapsedTime} = T.unpack . makeGreen $ "[PASS] " <> (T.pack $ printf "%s (%s seconds)" (name curlCase) (formatSecToMS elapsedTime))
+  show CasePass{curlCase, elapsedTime} = T.unpack . makeGreen $ "[PASS] " <> (T.pack $ printf "%s (%f seconds)" (name curlCase) (millisToS elapsedTime))
   show CaseFail{curlCase, failures, elapsedTime} =
     T.unpack $ makeRed "[FAIL] " <>
     name curlCase <>
-    (T.pack $ printf " (%s seconds) " (formatSecToMS elapsedTime)) <>
+    (T.pack $ printf " (%s seconds) " (millisToS elapsedTime)) <>
     "\n" <>
     mconcat (map ((\s -> "\nAssertion failed: " <> s) . (<> "\n") . (T.pack . show)) failures)
 
@@ -349,7 +346,7 @@ instance ToJSON CaseResult where
       , "case" .= curlCase
       , "responseHeaders" .= caseResponseHeaders
       , "responseValue" .= caseResponseValue
-      , "elapsedTime" .= elapsedTime
+      , "elapsedTimeSeconds" .= millisToS elapsedTime
       ]
   toJSON CaseFail {curlCase, caseResponseHeaders, caseResponseValue, elapsedTime, failures} =
     object
@@ -357,7 +354,7 @@ instance ToJSON CaseResult where
       , "case" .= curlCase
       , "responseHeaders" .= caseResponseHeaders
       , "responseValue" .= caseResponseValue
-      , "elapsedTime" .= elapsedTime
+      , "elapsedTimeSeconds" .= millisToS elapsedTime
       , "failures" .= failures
       ]
 

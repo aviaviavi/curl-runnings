@@ -13,7 +13,7 @@ module Testing.CurlRunnings.Internal
   , makeUnsafeLogger
   , pShow
   , nowMillis
-  , roundToStr
+  , millisToS
   , LogLevel(..)
   , CurlRunningsLogger
   , CurlRunningsUnsafeLogger
@@ -86,3 +86,9 @@ nowMillis = do
 
 roundToStr :: (PrintfArg a, Floating a) => a -> String
 roundToStr = printf "%0.2f"
+
+roundHundreds :: (PrintfArg a, Floating a) => a -> Double
+roundHundreds = read . printf "%0.2f"
+
+millisToS :: Integer -> Double
+millisToS t = roundHundreds ((fromIntegral t :: Double) / 1000.0)
