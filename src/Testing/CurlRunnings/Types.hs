@@ -331,11 +331,11 @@ data CaseResult
       } deriving (Generic)
 
 instance Show CaseResult where
-  show CasePass{curlCase, elapsedTime} = T.unpack . makeGreen $ "[PASS] " <> (T.pack $ printf "%s (%f seconds)" (name curlCase) (millisToS elapsedTime))
+  show CasePass{curlCase, elapsedTime} = T.unpack . makeGreen $ "[PASS] " <> (T.pack $ printf "%s (%0.2f seconds)" (name curlCase) (millisToS elapsedTime))
   show CaseFail{curlCase, failures, elapsedTime} =
     T.unpack $ makeRed "[FAIL] " <>
     name curlCase <>
-    (T.pack $ printf " (%f seconds) " (millisToS elapsedTime)) <>
+    (T.pack $ printf " (%0.2f seconds) " (millisToS elapsedTime)) <>
     "\n" <>
     mconcat (map ((\s -> "\nAssertion failed: " <> s) . (<> "\n") . (T.pack . show)) failures)
 
