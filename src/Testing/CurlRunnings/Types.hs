@@ -335,7 +335,7 @@ instance Show CaseResult where
   show CaseFail{curlCase, failures, elapsedTime} =
     T.unpack $ makeRed "[FAIL] " <>
     name curlCase <>
-    (T.pack $ printf " (%s seconds) " (millisToS elapsedTime)) <>
+    (T.pack $ printf " (%f seconds) " (millisToS elapsedTime)) <>
     "\n" <>
     mconcat (map ((\s -> "\nAssertion failed: " <> s) . (<> "\n") . (T.pack . show)) failures)
 
