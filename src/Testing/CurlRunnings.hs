@@ -77,7 +77,12 @@ appendQueryParameters newParams r = setQueryString (existing ++ newQuery) r wher
   newQuery = NT.simpleQueryToQuery $ fmap (\(KeyValuePair k v) -> (T.encodeUtf8 k, T.encodeUtf8 v)) newParams
 
 setPayload :: Maybe Payload -> Request -> Request
-setPayload Nothing = id
+-- TODO - for backwards compatability, empty requests will set an empty json
+-- payload. Given that we support multiple content types, this funtionality
+-- isn't exactly correct anymore. This behavior should be considered
+-- deprecated and will be updated with the next major version release of
+-- curl-runnings.
+setPayload Nothing = setRequestBodyJSON emptyObject
 setPayload (Just (JSON v)) = setRequestBodyJSON v
 setPayload (Just (URLEncoded (KeyValuePairs xs))) = setRequestBodyURLEncoded $ kvpairs xs where
   kvpairs = fmap (\(KeyValuePair k v) -> (T.encodeUtf8 k, T.encodeUtf8 v))
