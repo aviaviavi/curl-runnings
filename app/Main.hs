@@ -9,6 +9,7 @@ import qualified Codec.Compression.GZip        as GZ
 import           Control.Monad
 import           Data.Aeson
 import qualified Data.ByteString.Lazy          as B
+import           Data.Foldable
 import           Data.List
 import qualified Data.List.NonEmpty            as NE
 import           Data.Maybe
@@ -33,6 +34,7 @@ data CurlRunnings = CurlRunnings
   { file           :: FilePath
   , grep           :: Maybe T.Text
   , upgrade        :: Bool
+  , json_output    :: Maybe FilePath
   , skip_tls_check :: Bool
   } deriving (Show, Data, Typeable, Eq)
 
@@ -40,11 +42,17 @@ data CurlRunnings = CurlRunnings
 argParser :: CurlRunnings
 argParser =
   CurlRunnings
-  { file = def &= typFile &= help "File to run"
-  , grep = def &= help "Regex to filter test cases by name"
-  , upgrade = def &= help "Pull the latest version of curl runnings"
-  , skip_tls_check = def &= help "Don't perform a TLS check (USE WITH CAUTION. Only use this if you signed your own certs)"
-  } &=
+    { file = def &= typFile &= help "File to run"
+    , grep = def &= help "Regex to filter test cases by name"
+    , upgrade = def &= help "Pull the latest version of curl runnings"
+    , json_output =
+        def &= typFile &=
+        help "Write test results to a json file specified by path"
+    , skip_tls_check =
+        def &=
+        help
+          "Don't perform a TLS check (USE WITH CAUTION. Only use this if you signed your own certs)"
+    } &=
   summary ("curl-runnings " ++ showVersion version) &=
   program "curl-runnings" &=
   verbosity &=
@@ -74,17 +82,26 @@ instance FromJSON GithubReleasesResponse
 setGithubReqHeaders :: Request -> Request
 setGithubReqHeaders = setRequestHeaders [("User-Agent", "aviaviavi")]
 
-runFile :: FilePath -> Verbosity -> Maybe T.Text -> TLSCheckType -> IO ()
-runFile "" _ _ _ =
+runFile ::
+     FilePath
+  -> Verbosity
+  -> Maybe T.Text
+  -> TLSCheckType
+  -> Maybe FilePath
+  -> IO ()
+runFile "" _ _ _ _ =
   putStrLn
     "Please specify an input file with the --file (-f) flag or use --help for more information"
-runFile path verbosityLevel regexp tlsType = do
+runFile path verbosityLevel regexp tlsType maybeOutputFile = do
   home <- getEnv "HOME"
   suite <- decodeFile . T.unpack $ T.replace "~" (T.pack home) (T.pack path)
   case suite of
     Right s -> do
       results <-
-        runSuite (s {suiteCaseFilter = regexp}) (toLogLevel verbosityLevel) $ tlsType
+        runSuite (s {suiteCaseFilter = regexp}) (toLogLevel verbosityLevel) tlsType
+      for_ maybeOutputFile $ \outputFile -> do
+        let jsonSummary = encode results
+        B.writeFile (outputFile) jsonSummary
       if any isFailing results
         then putStrLn (T.unpack $ makeRed "Some tests failed") >>
              exitWith (ExitFailure 1)
@@ -190,7 +207,15 @@ main :: IO ()
 main = do
   userArgs <- cmdArgs argParser
   verbosityLevel <- getVerbosity
-  let tlsCheckType = if skip_tls_check userArgs then SkipTLSCheck else DoTLSCheck
+  let tlsCheckType =
+        if skip_tls_check userArgs
+          then SkipTLSCheck
+          else DoTLSCheck
   if upgrade userArgs
     then upgradeCurlRunnings
-    else runFile (file userArgs) verbosityLevel (grep userArgs) tlsCheckType
+    else runFile
+           (file userArgs)
+           verbosityLevel
+           (grep userArgs)
+           tlsCheckType
+           (json_output userArgs)
