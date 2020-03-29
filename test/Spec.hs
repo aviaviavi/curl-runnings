@@ -129,7 +129,6 @@ main = hspec $
     decodePayload [r|{"other": ["key1", "value1"]}|] `shouldSatisfy` isJSON
     -- "other" is ignored
     decodePayload [r|{"bodyType": "json", "content": {"a": "b"}, "other": 1}|] `shouldSatisfy` isJSON
-    decodePayload [r|{"bodytype": "urlencoded", "content": ["key1", "value1"]}|] `shouldSatisfy` isJSON
 
   it "should not decode invalid request body" $ do
     decodePayload [r|{"bodyType": "plain", "content": {"key1": "value1"}}|] `shouldSatisfy` isLeft
