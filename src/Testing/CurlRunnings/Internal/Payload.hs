@@ -62,7 +62,9 @@ data Payload = JSON Value | URLEncoded KeyValuePairs deriving Generic
 
 instance Show Payload where
   show (JSON v) = show v
-  show (URLEncoded (KeyValuePairs xs)) = T.unpack $ T.intercalate "&" $ fmap (\(KeyValuePair k v) -> k <> "=" <> v) xs
+  show (URLEncoded (KeyValuePairs xs)) =
+    T.unpack $
+    T.intercalate "&" $ fmap (\(KeyValuePair k v) -> k <> "=" <> v) xs
 
 payloadTagFieldName :: T.Text
 payloadTagFieldName = "bodyType"
@@ -71,13 +73,21 @@ payloadContentsFieldName :: T.Text
 payloadContentsFieldName = "content"
 
 instance FromJSON Payload where
-  parseJSON obj@(Object v) = parsePayload v where
-    parsePayload o = if not (H.member payloadTagFieldName o) then return (JSON obj) else genericParseJSON payloadOptions obj
-    payloadOptions = defaultOptions { sumEncoding = TaggedObject { tagFieldName = T.unpack payloadTagFieldName
-                                                                 , contentsFieldName = T.unpack payloadContentsFieldName
-                                                                 }
-                                    , constructorTagModifier = fmap C.toLower
-                                    }
+  parseJSON obj@(Object v) = parsePayload v
+    where
+      parsePayload o =
+        if not (H.member payloadTagFieldName o)
+          then return (JSON obj)
+          else genericParseJSON payloadOptions obj
+      payloadOptions =
+        defaultOptions
+          { sumEncoding =
+              TaggedObject
+                { tagFieldName = T.unpack payloadTagFieldName
+                , contentsFieldName = T.unpack payloadContentsFieldName
+                }
+          , constructorTagModifier = fmap C.toLower
+          }
   parseJSON (Array v) = do
     eachParsed <- mapM parseJSON v
     return . JSON $ Array eachParsed
