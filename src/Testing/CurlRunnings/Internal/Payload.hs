@@ -71,13 +71,17 @@ payloadContentsFieldName :: T.Text
 payloadContentsFieldName = "content"
 
 instance FromJSON Payload where
-  parseJSON v = withObject "payload" parsePayload v where
-    parsePayload o = if not (H.member payloadTagFieldName o) then return (JSON v) else genericParseJSON payloadOptions v
+  parseJSON obj@(Object v) = parsePayload v where
+    parsePayload o = if not (H.member payloadTagFieldName o) then return (JSON obj) else genericParseJSON payloadOptions obj
     payloadOptions = defaultOptions { sumEncoding = TaggedObject { tagFieldName = T.unpack payloadTagFieldName
                                                                  , contentsFieldName = T.unpack payloadContentsFieldName
                                                                  }
                                     , constructorTagModifier = fmap C.toLower
                                     }
+  parseJSON (Array v) = do
+    eachParsed <- mapM parseJSON v
+    return . JSON $ Array eachParsed
+  parseJSON otherType = return $ JSON otherType
 
 instance ToJSON Payload where
   toJSON (JSON v) = object [(payloadTagFieldName, "json"), (payloadContentsFieldName, toJSON v)]
