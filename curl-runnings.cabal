@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5a2008aba7f6690ad45088adf6e8b1be7eb49be4c65121dfd5786ffb8ad9810a
+-- hash: d5b66ab8900a29995638845bf58cc78370a00330cb11a8d2d57b631846a65e41
 
 name:           curl-runnings
 version:        0.13.0
@@ -21,6 +21,7 @@ license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
+    examples/auth.yaml
     examples/example-spec.json
     examples/example-spec.yaml
     examples/importable.yaml

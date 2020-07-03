@@ -117,7 +117,6 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
                 appendQueryParameters interpolatedQueryParams  .
                 (if tlsCheckType == DoTLSCheck then id else (setRequestManager manager)) $
                 initReq {method = B8S.pack . show $ requestMethod curlCase}
-          logger state DEBUG (pShow interpolatedHeaders)
           logger state DEBUG (pShow request)
           logger
             state
