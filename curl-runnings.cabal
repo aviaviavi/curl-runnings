@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 36f3a328f46ddf05fd9e94383935542233bc1674c49698580add7c9ef9473fe0
+-- hash: 5a2008aba7f6690ad45088adf6e8b1be7eb49be4c65121dfd5786ffb8ad9810a
 
 name:           curl-runnings
 version:        0.13.0
@@ -46,6 +46,7 @@ library
   build-depends:
       aeson >=1.2.4.0
     , base >=4.0 && <5
+    , base64-bytestring >=1.0.0.2
     , bytestring >=0.10.8.2
     , case-insensitive >=0.2.1
     , clock >=0.7.2

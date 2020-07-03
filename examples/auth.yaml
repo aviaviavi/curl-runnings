@@ -1,0 +1,11 @@
+cases:
+  - name: Auth example
+    url: http://your-endpoint.com/status
+    requestMethod: GET
+    expectStatus: 200
+    # curl-runnings supports basic authentication at this time. if you need
+    # another auth header types, feel free to open an issue!
+    auth:
+      basic:
+        username: 'you'
+        password: 'your password'
