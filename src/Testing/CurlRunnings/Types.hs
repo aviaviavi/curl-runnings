@@ -7,27 +7,28 @@
 
 module Testing.CurlRunnings.Types
   ( AssertionFailure(..)
+  , Authentication(..)
   , CaseResult(..)
-  , CurlSuite(..)
   , CurlCase(..)
+  , CurlRunningsState(..)
+  , CurlSuite(..)
+  , FullQueryText
   , Header(..)
   , HeaderMatcher(..)
   , Headers(..)
-  , KeyValuePair(..)
-  , KeyValuePairs(..)
-  , Payload(..)
   , HttpMethod(..)
+  , Index(..)
+  , InterpolatedQuery(..)
   , JsonMatcher(..)
   , JsonSubExpr(..)
+  , KeyValuePair(..)
+  , KeyValuePairs(..)
   , PartialHeaderMatcher(..)
-  , StatusCodeMatcher(..)
-  , QueryError(..)
-  , Index(..)
+  , Payload(..)
   , Query(..)
-  , InterpolatedQuery(..)
-  , FullQueryText
+  , QueryError(..)
   , SingleQueryText
-  , CurlRunningsState(..)
+  , StatusCodeMatcher(..)
   , TLSCheckType(..)
 
   , isFailing
@@ -197,6 +198,15 @@ instance FromJSON StatusCodeMatcher where
   parseJSON obj@(Array _)  = AnyCodeIn <$> parseJSON obj
   parseJSON invalid        = typeMismatch "StatusCodeMatcher" invalid
 
+data Authentication =
+  BasicAuthentication T.Text T.Text
+  deriving (Show, Generic)
+
+instance FromJSON Authentication where
+  parseJSON (Object o) = BasicAuthentication <$> (o .: "basic" >>= (.: "username")) <*> (o .: "basic" >>= (.: "password"))
+  parseJSON invalid    = typeMismatch "Authentication" invalid
+instance ToJSON Authentication
+
 -- | A single curl test case, the basic foundation of a curl-runnings test.
 data CurlCase = CurlCase
   { name            :: T.Text -- ^ The name of the test case
@@ -205,6 +215,7 @@ data CurlCase = CurlCase
   , requestData     :: Maybe Payload -- ^ Payload to send with the request, if any
   , queryParameters :: Maybe KeyValuePairs -- ^ Query parameters to set in the request, if any
   , headers         :: Maybe Headers -- ^ Headers to send with the request, if any
+  , auth            :: Maybe Authentication -- ^ Authentication to add to the request, if any
   , expectData      :: Maybe JsonMatcher -- ^ The assertions to make on the response payload, if any
   , expectStatus    :: StatusCodeMatcher -- ^ Assertion about the status code returned by the target
   , expectHeaders   :: Maybe HeaderMatcher -- ^ Assertions to make about the response headers, if any

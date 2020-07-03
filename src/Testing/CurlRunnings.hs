@@ -17,6 +17,7 @@ import           Control.Exception
 import           Control.Monad
 import           Data.Aeson
 import           Data.Aeson.Types
+import qualified Data.ByteString.Base64               as B64
 import qualified Data.ByteString.Char8                as B8S
 import qualified Data.ByteString.Lazy                 as B
 import qualified Data.CaseInsensitive                 as CI
@@ -93,7 +94,7 @@ runCase :: CurlRunningsState -> CurlCase -> IO CaseResult
 runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
   let eInterpolatedUrl = interpolateQueryString state $ url curlCase
       eInterpolatedHeaders =
-        interpolateHeaders state $ fromMaybe (HeaderSet []) (headers curlCase)
+        interpolateHeaders state (auth curlCase) $ fromMaybe (HeaderSet []) (headers curlCase)
       eInterpolatedQueryParams = interpolateViaJSON state $ fromMaybe (KeyValuePairs []) (queryParameters curlCase)
   case (eInterpolatedUrl, eInterpolatedHeaders, eInterpolatedQueryParams) of
     (Left err, _, _) ->
@@ -203,16 +204,26 @@ interpolatePartialHeader state (PartialHeaderMatcher k v) =
          unsafeLogger state ERROR "WARNING: empty header matcher found" . Right $
          PartialHeaderMatcher Nothing Nothing
 
-interpolateHeaders :: CurlRunningsState -> Headers -> Either QueryError Headers
-interpolateHeaders state (HeaderSet headerList) =
-  mapM
-    (\(Header k v) ->
-       case sequence
-              [interpolateQueryString state k, interpolateQueryString state v] of
-         Left err       -> Left err
-         Right [k', v'] -> Right $ Header k' v')
-    headerList >>=
-  (Right . HeaderSet)
+makeBasicAuthToken :: T.Text -> T.Text -> T.Text
+makeBasicAuthToken u p = T.decodeUtf8 . B64.encode $ T.encodeUtf8 (u <> ":" <> p)
+
+interpolateHeaders :: CurlRunningsState -> Maybe Authentication -> Headers -> Either QueryError Headers
+interpolateHeaders state maybeAuth (HeaderSet headerList) = do
+  authHeaders <- case maybeAuth of
+        (Just (BasicAuthentication u p)) ->
+          let interpolated = sequence [interpolateQueryString state u, interpolateQueryString state p] in
+          case interpolated of
+            Right [u, p] -> Right [Header "Authorization" ("Basic " <> (makeBasicAuthToken u p))]
+            Left l -> Left l
+        Nothing -> Right []
+  mainHeaders <- (mapM
+        (\(Header k v) ->
+          case sequence
+                  [interpolateQueryString state k, interpolateQueryString state v] of
+            Left err       -> Left err
+            Right [k', v'] -> Right $ Header k' v')
+      headerList)
+  Right . HeaderSet $ mainHeaders <> authHeaders
 
 -- | Does this header contain our matcher?
 headerMatches :: PartialHeaderMatcher -> Header -> Bool
