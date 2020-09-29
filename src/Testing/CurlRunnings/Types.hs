@@ -209,16 +209,17 @@ instance ToJSON Authentication
 
 -- | A single curl test case, the basic foundation of a curl-runnings test.
 data CurlCase = CurlCase
-  { name            :: T.Text -- ^ The name of the test case
-  , url             :: T.Text -- ^ The target url to test
-  , requestMethod   :: HttpMethod -- ^ Verb to use for the request
-  , requestData     :: Maybe Payload -- ^ Payload to send with the request, if any
-  , queryParameters :: Maybe KeyValuePairs -- ^ Query parameters to set in the request, if any
-  , headers         :: Maybe Headers -- ^ Headers to send with the request, if any
-  , auth            :: Maybe Authentication -- ^ Authentication to add to the request, if any
-  , expectData      :: Maybe JsonMatcher -- ^ The assertions to make on the response payload, if any
-  , expectStatus    :: StatusCodeMatcher -- ^ Assertion about the status code returned by the target
-  , expectHeaders   :: Maybe HeaderMatcher -- ^ Assertions to make about the response headers, if any
+  { name             :: T.Text -- ^ The name of the test case
+  , url              :: T.Text -- ^ The target url to test
+  , requestMethod    :: HttpMethod -- ^ Verb to use for the request
+  , requestData      :: Maybe Payload -- ^ Payload to send with the request, if any
+  , queryParameters  :: Maybe KeyValuePairs -- ^ Query parameters to set in the request, if any
+  , headers          :: Maybe Headers -- ^ Headers to send with the request, if any
+  , auth             :: Maybe Authentication -- ^ Authentication to add to the request, if any
+  , expectData       :: Maybe JsonMatcher -- ^ The assertions to make on the response payload, if any
+  , expectStatus     :: StatusCodeMatcher -- ^ Assertion about the status code returned by the target
+  , expectHeaders    :: Maybe HeaderMatcher -- ^ Assertions to make about the response headers, if any
+  , allowedRedirects :: Maybe Int -- ^ Number of redirects to follow. Defaults to 10
   } deriving (Show, Generic)
 
 instance FromJSON CurlCase

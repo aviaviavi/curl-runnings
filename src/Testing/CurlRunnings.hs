@@ -116,7 +116,8 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
                 setRequestHeaders (toHTTPHeaders interpolatedHeaders) .
                 appendQueryParameters interpolatedQueryParams  .
                 (if tlsCheckType == DoTLSCheck then id else (setRequestManager manager)) $
-                initReq {method = B8S.pack . show $ requestMethod curlCase}
+                initReq { method = B8S.pack . show $ requestMethod curlCase
+                        , redirectCount = fromMaybe 10 (allowedRedirects curlCase) }
           logger state DEBUG (pShow request)
           logger
             state
