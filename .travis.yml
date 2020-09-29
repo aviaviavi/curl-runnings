@@ -27,7 +27,7 @@ before_install:
 # library, executables, and test suites, and runs the test suites.
 # `--no-terminal works` around some quirks in Travis's terminal implementation.
 script: |
-  export version=$(grep "^version" curl-runnings.cabal | sed 's/ //g'  | cut -d ':' -f 2) &&
+  export version=$(grep "^version" package.yaml | sed 's/ //g'  | cut -d ':' -f 2) &&
   echo "building binary version $version" &&
   stack $ARGS --no-terminal --install-ghc --haddock test &&
   stack $ARGS --no-terminal --install-ghc --haddock install &&
