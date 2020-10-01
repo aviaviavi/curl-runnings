@@ -24,7 +24,7 @@ let ExpectData =
           { contains : List PartialMatcher, notContains : List PartialMatcher }
       >
 
-let KeyValMatchJSON =
+let KeyValMatchHydrated =
       { keyMatch : Optional PartialMatcher
       , valueMatch : Optional PartialMatcher
       , keyValueMatch : Optional PartialMatcher
@@ -35,7 +35,7 @@ let ExpectHeaders =
       | HeaderKeyVal : { key : Optional Text, value : Optional Text }
       >
 
-let makeContains =
+let hydrateContains =
       λ(containsMatcher : PartialMatcher) →
         merge
           { KeyMatch =
@@ -62,34 +62,44 @@ let makeContains =
           }
           containsMatcher
 
-let ExpectResponseJSON =
+let ExpectResponseHydrated =
       { exactly : Optional ExpectData
-      , contains : Optional (List KeyValMatchJSON)
-      , notContains : Optional (List KeyValMatchJSON)
+      , contains : Optional (List KeyValMatchHydrated)
+      , notContains : Optional (List KeyValMatchHydrated)
       }
 
-let makeExpect =
+let hydrateExpectData =
       λ(matcher : ExpectData) →
         merge
           { Exactly =
               λ(j : JSON.Type) →
                 { exactly = Some (ExpectData.Exactly j)
-                , contains = None (List KeyValMatchJSON)
-                , notContains = None (List KeyValMatchJSON)
+                , contains = None (List KeyValMatchHydrated)
+                , notContains = None (List KeyValMatchHydrated)
                 }
           , Contains =
               λ(ms : List PartialMatcher) →
                 { exactly = None ExpectData
                 , contains = Some
-                    (List/map PartialMatcher KeyValMatchJSON makeContains ms)
-                , notContains = None (List KeyValMatchJSON)
+                    ( List/map
+                        PartialMatcher
+                        KeyValMatchHydrated
+                        hydrateContains
+                        ms
+                    )
+                , notContains = None (List KeyValMatchHydrated)
                 }
           , NotContains =
               λ(ms : List PartialMatcher) →
                 { exactly = None ExpectData
-                , contains = None (List KeyValMatchJSON)
+                , contains = None (List KeyValMatchHydrated)
                 , notContains = Some
-                    (List/map PartialMatcher KeyValMatchJSON makeContains ms)
+                    ( List/map
+                        PartialMatcher
+                        KeyValMatchHydrated
+                        hydrateContains
+                        ms
+                    )
                 }
           , MixedContains =
               λ ( args
@@ -101,15 +111,15 @@ let makeExpect =
                 , contains = Some
                     ( List/map
                         PartialMatcher
-                        KeyValMatchJSON
-                        makeContains
+                        KeyValMatchHydrated
+                        hydrateContains
                         args.contains
                     )
                 , notContains = Some
                     ( List/map
                         PartialMatcher
-                        KeyValMatchJSON
-                        makeContains
+                        KeyValMatchHydrated
+                        hydrateContains
                         args.notContains
                     )
                 }
@@ -120,9 +130,9 @@ let BodyType = < json | urlencoded >
 
 let RequestData = < JSON : JSON.Type | UrlEncoded : Map Text Text >
 
-let RequestDataJSON = { bodyType : BodyType, content : RequestData }
+let RequestDataHydrated = { bodyType : BodyType, content : RequestData }
 
-let makeRequestDataJSON =
+let hydrateRquestData =
       λ(reqData : RequestData) →
         merge
           { JSON =
@@ -179,20 +189,20 @@ let HydratedCase =
           , url : Text
           , requestMethod : HttpMethod
           , queryParameters : JSON.Type
-          , expectData : Optional ExpectResponseJSON
+          , expectData : Optional ExpectResponseHydrated
           , expectStatus : Natural
           , headers : Optional Text
           , expectHeaders : Optional (List ExpectHeaders)
           , allowedRedirects : Natural
-          , requestData : Optional RequestDataJSON
+          , requestData : Optional RequestDataHydrated
           }
       , default =
-        { expectData = None ExpectResponseJSON
+        { expectData = None ExpectResponseHydrated
         , headers = None Text
         , expectHeaders = None (List ExpectHeaders)
         , allowedRedirects = 10
         , queryParameters = JSON.null
-        , requestData = None RequestDataJSON
+        , requestData = None RequestDataHydrated
         }
       }
 
@@ -201,12 +211,16 @@ let hydrateCase =
           c
         ⫽ { queryParameters = makeQueryParams c.queryParameters
           , expectData =
-              Optional/map ExpectData ExpectResponseJSON makeExpect c.expectData
+              Optional/map
+                ExpectData
+                ExpectResponseHydrated
+                hydrateExpectData
+                c.expectData
           , requestData =
               Optional/map
                 RequestData
-                RequestDataJSON
-                makeRequestDataJSON
+                RequestDataHydrated
+                hydrateRquestData
                 c.requestData
           }
 
@@ -216,7 +230,6 @@ in  { Case
     , HttpMethod
     , ExpectData
     , PartialMatcher
-    , KeyValMatchJSON
     , ExpectHeaders
     , RequestData
     }
