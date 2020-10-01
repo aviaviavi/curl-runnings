@@ -40,7 +40,6 @@ import qualified Data.Vector                          as V
 import qualified Data.Vector                          as V
 import qualified Data.Yaml                            as Y
 import qualified Data.Yaml.Include                    as YI
-import           Debug.Trace
 import qualified Dhall
 import qualified Dhall.Import
 import qualified Dhall.JSON
@@ -59,7 +58,6 @@ import           Testing.CurlRunnings.Internal.Parser
 import           Testing.CurlRunnings.Types
 import           Text.Printf
 import           Text.Regex.Posix
-import           Text.Trifecta.Delta                  (Delta (..))
 
 -- | decode a json, yaml, or dhall file into a suite object
 decodeFile :: FilePath -> IO (Either String CurlSuite)
@@ -72,7 +70,7 @@ decodeFile specPath =
              "yaml" -> mapLeft show <$> YI.decodeFileEither specPath
              "yml" -> mapLeft show <$> YI.decodeFileEither specPath
              "dhall" -> do
-               result <- runExceptT $ do
+               runExceptT $ do
                  let showErrorWithMessage :: (Show a) => String -> a -> String
                      showErrorWithMessage message err = message ++ ": " ++ (show err)
                  raw <- liftIO $ TIO.readFile specPath
@@ -89,9 +87,7 @@ decodeFile specPath =
                        left (showErrorWithMessage "to json") $
                        Dhall.JSON.dhallToJSON expr'
                      left (showErrorWithMessage "from json") . resultToEither $
-                       fromJSON (trace (show val)  val)
-               print result
-               return result
+                       fromJSON  val
              _ -> return . Left $ printf "Invalid spec path %s" specPath
       else return . Left $ printf "%s not found" specPath
 

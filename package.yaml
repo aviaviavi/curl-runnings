@@ -48,7 +48,6 @@ library:
   - regex-posix >=0.95.2
   - text >=1.2.2.2
   - time >=1.8.0.2
-  - trifecta >=1.7.1
   - transformers >=0.5.2.0
   - unordered-containers >=0.2.8.0
   - vector >=0.12.0

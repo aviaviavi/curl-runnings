@@ -3,7 +3,7 @@
 
 let JSON = https://prelude.dhall-lang.org/JSON/package.dhall
 
-let CurlRunnings = ./../dhall/curl-runnings.dhall
+let CurlRunnings = ./dhall/curl-runnings.dhall
 
 let List/map = https://prelude.dhall-lang.org/List/map
 
