@@ -41,6 +41,7 @@ module Testing.CurlRunnings.Types
 import           Data.Aeson
 import           Data.Aeson.Types
 import qualified Data.Char                                   as C
+import           Data.Hashable                               (Hashable)
 import qualified Data.HashMap.Strict                         as H
 import           Data.Maybe
 import           Data.Monoid
@@ -82,14 +83,18 @@ instance ToJSON JsonMatcher
 
 instance FromJSON JsonMatcher where
   parseJSON (Object v)
-    | isJust $ H.lookup "exactly" v = Exactly <$> v .: "exactly"
-    | isJust (H.lookup "contains" v) && isJust (H.lookup "notContains" v) = do
-        c <- Contains <$> v .: "contains"
-        n <- NotContains <$> v .: "notContains"
-        return $ MixedContains [c, n]
-    | isJust $ H.lookup "contains" v = Contains <$> v .: "contains"
-    | isJust $ H.lookup "notContains" v = NotContains <$> v .: "notContains"
+    | justAndNotEmpty "exactly" v = Exactly <$> v .: "exactly"
+    | justAndNotEmpty "contains" v && justAndNotEmpty "notContains" v = do
+      c <- Contains <$> v .: "contains"
+      n <- NotContains <$> v .: "notContains"
+      return $ MixedContains [c, n]
+    | justAndNotEmpty "contains" v = Contains <$> v .: "contains"
+    | justAndNotEmpty "notContains" v = NotContains <$> v .: "notContains"
   parseJSON invalid = typeMismatch "JsonMatcher" invalid
+
+justAndNotEmpty :: (Eq k, Hashable k) => k -> H.HashMap k Value -> Bool
+justAndNotEmpty key obj =
+  (isJust $ H.lookup key obj) && (H.lookup key obj /= Just Null)
 
 -- | Simple predicate to check value constructor type
 isContains :: JsonMatcher -> Bool
@@ -171,18 +176,19 @@ data JsonSubExpr
 
 instance FromJSON JsonSubExpr where
   parseJSON (Object v)
-    | isJust $ H.lookup "keyValueMatch" v =
+    | justAndNotEmpty "keyValueMatch" v =
       let toParse = fromJust $ H.lookup "keyValueMatch" v
       in case toParse of
            Object o -> KeyValueMatch <$> o .: "key" <*> o .: "value"
            _        -> typeMismatch "JsonSubExpr" toParse
-    | isJust $ H.lookup "keyMatch" v =
+    | justAndNotEmpty "keyMatch" v =
       let toParse = fromJust $ H.lookup "keyMatch" v
       in case toParse of
            String s -> return $ KeyMatch s
            _        -> typeMismatch "JsonSubExpr" toParse
-    | isJust $ H.lookup "valueMatch" v = ValueMatch <$> v .: "valueMatch"
+    | justAndNotEmpty "valueMatch" v = ValueMatch <$> v .: "valueMatch"
   parseJSON invalid = typeMismatch "JsonSubExpr" invalid
+
 instance ToJSON JsonSubExpr
 
 -- | Check the status code of a response. You can specify one or many valid codes.

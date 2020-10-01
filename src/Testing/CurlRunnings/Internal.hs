@@ -36,7 +36,7 @@ makeRed :: T.Text -> T.Text
 makeRed s = "\x1B[31m" <> s <> "\x1B[0m"
 
 pShow :: Show a => a -> T.Text
-pShow = TL.toStrict . P.pShow
+pShow = T.pack . show
 
 tracer :: Show a => T.Text -> a -> a
 tracer a b = trace (T.unpack $ a <> T.pack ": " <> pShow b) b

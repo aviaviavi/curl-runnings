@@ -34,11 +34,13 @@ import qualified Data.Text                            as T
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as TIO
 import qualified Data.Text.Lazy                       as TL
+import qualified Data.Text.Lazy.IO                    as TLIO
 import           Data.Time.Clock
 import qualified Data.Vector                          as V
 import qualified Data.Vector                          as V
 import qualified Data.Yaml                            as Y
 import qualified Data.Yaml.Include                    as YI
+import           Debug.Trace
 import qualified Dhall
 import qualified Dhall.Import
 import qualified Dhall.JSON
@@ -57,7 +59,6 @@ import           Testing.CurlRunnings.Internal.Parser
 import           Testing.CurlRunnings.Types
 import           Text.Printf
 import           Text.Regex.Posix
-
 import           Text.Trifecta.Delta                  (Delta (..))
 
 -- | decode a json, yaml, or dhall file into a suite object
@@ -70,15 +71,14 @@ decodeFile specPath =
                eitherDecode' <$> B.readFile specPath :: IO (Either String CurlSuite)
              "yaml" -> mapLeft show <$> YI.decodeFileEither specPath
              "yml" -> mapLeft show <$> YI.decodeFileEither specPath
-             "dhall" ->
-               runExceptT $ do
+             "dhall" -> do
+               result <- runExceptT $ do
                  let showErrorWithMessage :: (Show a) => String -> a -> String
-                     showErrorWithMessage m = show . tracer m
+                     showErrorWithMessage message err = message ++ ": " ++ (show err)
+                 raw <- liftIO $ TIO.readFile specPath
                  expr <-
-                   withExceptT (showErrorWithMessage "expr") . ExceptT . return $
-                   Dhall.Parser.exprFromText
-                     (Directed "(stdin)" 0 0 0 0)
-                     (TL.pack specPath)
+                   withExceptT (showErrorWithMessage "parser") . ExceptT . return $
+                   Dhall.Parser.exprFromText "dhall parser" (raw :: Dhall.Text)
                  expr' <- liftIO $ Dhall.Import.load expr
                  ExceptT $
                    return $ do
@@ -89,8 +89,9 @@ decodeFile specPath =
                        left (showErrorWithMessage "to json") $
                        Dhall.JSON.dhallToJSON expr'
                      left (showErrorWithMessage "from json") . resultToEither $
-                       fromJSON val
-             _ -> return . Left $ printf "Invalid spec path %s" specPath
+                       fromJSON (trace (show val)  val)
+               print result
+               return result
              _ -> return . Left $ printf "Invalid spec path %s" specPath
       else return . Left $ printf "%s not found" specPath
 

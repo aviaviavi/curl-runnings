@@ -1,11 +1,13 @@
--- This file has been generated from package.yaml by hpack version 0.20.0.
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a08a253d877a2b058adfd5d4f55789acf8f1be35dda0c11673125c24a430cdc1
+-- hash: f5f77f8d68f731f3cf2d5569716326c456855c078d632608f0a7f56937c42aea
 
 name:           curl-runnings
-version:        0.5.5
+version:        0.15.0
 synopsis:       A framework for declaratively writing curl based API tests
 description:    Please see the README on Github at <https://github.com/aviaviavi/curl-runnings#readme>
 category:       Testing
@@ -17,15 +19,15 @@ copyright:      2018 Avi Press
 license:        MIT
 license-file:   LICENSE
 build-type:     Simple
-cabal-version:  >= 1.10
-
 extra-source-files:
+    README.md
+    examples/auth.yaml
+    examples/dhall-output-spec.yaml
     examples/example-spec.dhall
     examples/example-spec.json
     examples/example-spec.yaml
+    examples/importable.yaml
     examples/interpolation-spec.yaml
-    examples/test.json
-    README.md
 
 source-repository head
   type: git
@@ -36,19 +38,26 @@ library
       src
   build-depends:
       aeson >=1.2.4.0
-    , aeson-pretty >=0.8.5
-    , base >=4.7 && <5
+    , base >=4.0 && <5
+    , base64-bytestring >=1.0.0.2
     , bytestring >=0.10.8.2
     , case-insensitive >=0.2.1
+    , clock >=0.7.2
+    , connection >=0.2.8
     , dhall >=1.8.2
     , dhall-json >=1.0.9
     , directory >=1.3.0.2
+    , hashable >=1.3.0.0
     , hspec >=2.4.4
     , hspec-expectations >=0.8.2
-    , http-conduit >=2.2.4
-    , http-types >=0.9.1
-    , megaparsec >=6.3.0
+    , http-client-tls >=0.3.5.3
+    , http-conduit >=2.3.6
+    , http-types >=0.12.3
+    , megaparsec >=7.0.4
+    , pretty-simple >=2.0.2.1
+    , regex-posix >=0.95.2
     , text >=1.2.2.2
+    , time >=1.8.0.2
     , transformers >=0.5.2.0
     , trifecta >=1.7.1
     , unordered-containers >=0.2.8.0
@@ -59,6 +68,9 @@ library
       Testing.CurlRunnings.Types
       Testing.CurlRunnings.Internal
       Testing.CurlRunnings.Internal.Parser
+      Testing.CurlRunnings.Internal.Headers
+      Testing.CurlRunnings.Internal.KeyValuePairs
+      Testing.CurlRunnings.Internal.Payload
   other-modules:
       Paths_curl_runnings
   default-language: Haskell2010
@@ -69,10 +81,16 @@ executable curl-runnings
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7
+      aeson >=1.2.4.0
+    , base >=4.7
+    , bytestring >=0.10.8.2
     , cmdargs >=0.10.20
     , curl-runnings
+    , directory >=1.3.0.2
+    , http-conduit >=2.2.4
+    , tar >=0.5.0.3
     , text >=1.2.2.2
+    , zlib >=0.6.1.2
   other-modules:
       Paths_curl_runnings
   default-language: Haskell2010
@@ -84,11 +102,15 @@ test-suite curl-runnings-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      aeson >=1.2.4.0
+    , base >=4.0 && <5
+    , bytestring >=0.10.8.2
     , curl-runnings
     , directory >=1.3.0.2
     , hspec >=2.4.4
     , hspec-expectations >=0.8.2
+    , raw-strings-qq >=1.1
+    , text >=1.2.2.2
   other-modules:
       Paths_curl_runnings
   default-language: Haskell2010
