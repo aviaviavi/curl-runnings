@@ -37,7 +37,7 @@ script: |
   ln -s curl-runnings-${version}.tar.gz curl-runnings.tar.gz &&
   mkdir -p $HOME/cr-release &&
   cd $HOME/cr-release &&
-  ln -s $HOME/.local/bin/curl-runnings-${version}.tar.gz curl-runnings-${version}.tar.gz
+  ln -s $HOME/.local/bin/curl-runnings-${version}.tar.gz curl-runnings-${version}-linux.tar.gz
 cache:
   directories:
   - $HOME/.stack

@@ -1,10 +1,10 @@
 name:                curl-runnings
-version:             0.15.0
+version:             0.16.0
 github:              aviaviavi/curl-runnings
 license:             MIT
 author:              Avi Press
 maintainer:          mail@avi.press
-copyright:           2018 Avi Press
+copyright:           2020 Avi Press
 category:            Testing
 synopsis:            A framework for declaratively writing curl based API tests
 
@@ -33,8 +33,11 @@ library:
   - case-insensitive >=0.2.1
   - base64-bytestring >=1.0.0.2
   - clock >=0.7.2
+  - dhall >=1.8.2
+  - dhall-json >= 1.0.9
   - directory >=1.3.0.2
-  - hspec >= 2.4.4
+  - hashable >= 1.3.0.0
+  - hspec >=2.4.4
   - hspec-expectations >=0.8.2
   - http-conduit >=2.3.6
   - megaparsec >=7.0.4
@@ -45,6 +48,7 @@ library:
   - regex-posix >=0.95.2
   - text >=1.2.2.2
   - time >=1.8.0.2
+  - transformers >=0.5.2.0
   - unordered-containers >=0.2.8.0
   - vector >=0.12.0
   - yaml >=0.8.28

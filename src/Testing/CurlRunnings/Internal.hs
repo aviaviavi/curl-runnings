@@ -71,7 +71,7 @@ type CurlRunningsLogger = (LogLevel -> T.Text -> IO ())
 type CurlRunningsUnsafeLogger a = (LogLevel -> T.Text -> a -> a)
 
 makeLogger :: LogLevel -> CurlRunningsLogger
-makeLogger threshold level text = when (level <= threshold) $ P.pPrint text
+makeLogger threshold level text = when (level <= threshold) $ putStrLn $ T.unpack text
 
 makeUnsafeLogger :: Show a => LogLevel -> CurlRunningsUnsafeLogger a
 makeUnsafeLogger threshold level text object =

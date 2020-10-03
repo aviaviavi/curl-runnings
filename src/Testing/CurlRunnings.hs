@@ -13,8 +13,12 @@ module Testing.CurlRunnings
   , decodeFile
   ) where
 
+import           Control.Arrow
 import           Control.Exception
+import qualified Control.Exception
 import           Control.Monad
+import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Except
 import           Data.Aeson
 import           Data.Aeson.Types
 import qualified Data.ByteString.Base64               as B64
@@ -28,9 +32,19 @@ import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text                            as T
 import qualified Data.Text.Encoding                   as T
+import qualified Data.Text.IO                         as TIO
+import qualified Data.Text.Lazy                       as TL
+import qualified Data.Text.Lazy.IO                    as TLIO
 import           Data.Time.Clock
 import qualified Data.Vector                          as V
+import qualified Data.Vector                          as V
+import qualified Data.Yaml                            as Y
 import qualified Data.Yaml.Include                    as YI
+import qualified Dhall
+import qualified Dhall.Import
+import qualified Dhall.JSON
+import qualified Dhall.Parser
+import qualified Dhall.TypeCheck
 import           Network.Connection                   (TLSSettings (..))
 import           Network.HTTP.Client.TLS              (mkManagerSettings)
 import           Network.HTTP.Conduit
@@ -45,8 +59,7 @@ import           Testing.CurlRunnings.Types
 import           Text.Printf
 import           Text.Regex.Posix
 
-
--- | decode a json or yaml file into a suite object
+-- | decode a json, yaml, or dhall file into a suite object
 decodeFile :: FilePath -> IO (Either String CurlSuite)
 decodeFile specPath =
   doesFileExist specPath >>= \exists ->
@@ -56,9 +69,31 @@ decodeFile specPath =
                eitherDecode' <$> B.readFile specPath :: IO (Either String CurlSuite)
              "yaml" -> mapLeft show <$> YI.decodeFileEither specPath
              "yml" -> mapLeft show <$> YI.decodeFileEither specPath
+             "dhall" -> do
+               runExceptT $ do
+                 let showErrorWithMessage :: (Show a) => String -> a -> String
+                     showErrorWithMessage message err = message ++ ": " ++ (show err)
+                 raw <- liftIO $ TIO.readFile specPath
+                 expr <-
+                   withExceptT (showErrorWithMessage "parser") . ExceptT . return $
+                   Dhall.Parser.exprFromText "dhall parser" (raw :: Dhall.Text)
+                 expr' <- liftIO $ Dhall.Import.load expr
+                 ExceptT $
+                   return $ do
+                     _ <-
+                       left (showErrorWithMessage "typeof") $
+                       Dhall.TypeCheck.typeOf expr'
+                     val <-
+                       left (showErrorWithMessage "to json") $
+                       Dhall.JSON.dhallToJSON expr'
+                     left (showErrorWithMessage "from json") . resultToEither $
+                       fromJSON  val
              _ -> return . Left $ printf "Invalid spec path %s" specPath
       else return . Left $ printf "%s not found" specPath
 
+resultToEither :: Result a -> Either String a
+resultToEither (Error s)   = Left s
+resultToEither (Success a) = Right a
 
 noVerifyTlsManagerSettings :: ManagerSettings
 noVerifyTlsManagerSettings = mkManagerSettings noVerifyTlsSettings Nothing
