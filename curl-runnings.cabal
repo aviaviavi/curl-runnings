@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0cb09179cf5a8649469c8e4939a78d5570b39a8da353a22080367871ca679a66
+-- hash: aa43a872b69e3fde19d35f5d9cef59dee68f35ad50a75e9fdca799f057343dff
 
 name:           curl-runnings
 version:        0.15.0
@@ -22,7 +22,6 @@ build-type:     Simple
 extra-source-files:
     README.md
     examples/auth.yaml
-    examples/dhall-output-spec.yaml
     examples/example-spec.dhall
     examples/example-spec.json
     examples/example-spec.yaml
