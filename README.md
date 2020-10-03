@@ -6,31 +6,19 @@
 
 _Feel the rhythm! Feel the rhyme! Get on up, it's testing time! curl-runnings!_
 
-curl-runnings is a framework for writing declarative, curl based tests for your
-APIs. Write your tests quickly and correctly with a straight-forward
-specification in [Dhall](https://dhall-lang.org/), yaml, or json that can encode simple but powerful matchers
-against responses.
+A common form of black-box API testing boils down to simply making requests to
+an endpoint and verifying properties of the response. curl-runnings aims to make
+writing tests like this fast and easy.
+
+curl-runnings is a framework for writing declarative tests for your APIs in a
+fashion equivalent to performing `curl`s and verifying the responses. Write your
+tests quickly and correctly with a straight-forward specification in
+[Dhall](https://dhall-lang.org/), yaml, or json that can encode simple but
+powerful matchers against responses.
 
 Alternatively, you can use the curl-runnings library to write your tests in
 Haskell (though a Haskell setup is absolutely not required to use this tool).
 
-### Why?
-
-This library came out of a pain-point my coworkers and I were running into
-during development: Writing integration tests for our APIs was generally
-annoying. They were time consuming to write especially considering how basic
-they were, and we are a small startup where developer time is in short supply.
-Over time, we found ourselves sometimes just writing bash scripts that would
-`curl` our various endpoints and check the output with very basic matchers.
-These tests were fast to write, but quickly became difficult to maintain as
-complexity was added. Not only did maintenance become challenging, but the whole
-system was very error prone and confidence in the tests overall was decreasing.
-At the end of the day, we needed to just curl some endpoints and verify the
-output looks sane, and do this quickly and correctly. This is precisely the goal
-of curl-runnings.
-
-Now you can write your tests just as data in a Dhall, yaml or json file,
-and curl-runnings will take care of the rest!
 
 ### Installing
 
