@@ -36,7 +36,7 @@ makeRed :: T.Text -> T.Text
 makeRed s = "\x1B[31m" <> s <> "\x1B[0m"
 
 pShow :: Show a => a -> T.Text
-pShow = T.pack . show
+pShow = TL.toStrict . P.pShow
 
 tracer :: Show a => T.Text -> a -> a
 tracer a b = trace (T.unpack $ a <> T.pack ": " <> pShow b) b
@@ -71,7 +71,7 @@ type CurlRunningsLogger = (LogLevel -> T.Text -> IO ())
 type CurlRunningsUnsafeLogger a = (LogLevel -> T.Text -> a -> a)
 
 makeLogger :: LogLevel -> CurlRunningsLogger
-makeLogger threshold level text = when (level <= threshold) $ P.pPrint text
+makeLogger threshold level text = when (level <= threshold) $ putStrLn $ T.unpack text
 
 makeUnsafeLogger :: Show a => LogLevel -> CurlRunningsUnsafeLogger a
 makeUnsafeLogger threshold level text object =
