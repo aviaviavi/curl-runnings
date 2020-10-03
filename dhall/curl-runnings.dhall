@@ -224,9 +224,14 @@ let hydrateCase =
                 c.requestData
           }
 
+let hydrateCases =
+      λ(cases : List Case.Type) →
+        List/map Case.Type HydratedCase.Type hydrateCase cases
+
 in  { Case
     , HydratedCase
     , hydrateCase
+    , hydrateCases
     , HttpMethod
     , ExpectData
     , PartialMatcher

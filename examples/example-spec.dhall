@@ -1,5 +1,10 @@
 -- Your curl-runnings specs can be written in dhall, which can give you great
 -- type safety and interpolation abilities.
+
+-- The curl-runnings dhall module offers some of the types and functions that
+-- can give you extra safety, or you can target the json specification directly
+-- if you prefer. You can import the dhall module directly or via url:
+-- https://raw.githubusercontent.com/aviaviavi/curl-runnings/master/dhall/curl-runnings.dhall
 let JSON = https://prelude.dhall-lang.org/JSON/package.dhall
 
 let CurlRunnings = ./dhall/curl-runnings.dhall
@@ -12,10 +17,7 @@ let Map = https://prelude.dhall-lang.org/Map/Type
 
 let host = "https://tabdextension.com"
 
-in  List/map
-      CurlRunnings.Case.Type
-      CurlRunnings.HydratedCase.Type
-      CurlRunnings.hydrateCase
+in  CurlRunnings.hydrateCases
       [ CurlRunnings.Case::{
         , expectData = Some
             ( CurlRunnings.ExpectData.Exactly
