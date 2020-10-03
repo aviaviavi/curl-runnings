@@ -8,7 +8,7 @@ _Feel the rhythm! Feel the rhyme! Get on up, it's testing time! curl-runnings!_
 
 curl-runnings is a framework for writing declarative, curl based tests for your
 APIs. Write your tests quickly and correctly with a straight-forward
-specification in yaml or json that can encode simple but powerful matchers
+specification in [Dhall](https://dhall-lang.org/), yaml, or json that can encode simple but powerful matchers
 against responses.
 
 Alternatively, you can use the curl-runnings library to write your tests in
@@ -29,13 +29,8 @@ At the end of the day, we needed to just curl some endpoints and verify the
 output looks sane, and do this quickly and correctly. This is precisely the goal
 of curl-runnings.
 
-Now you can write your tests just as data in a yaml or json file,
+Now you can write your tests just as data in a Dhall, yaml or json file,
 and curl-runnings will take care of the rest!
-
-While yaml/json is the current way to write curl-runnings tests, this project is
-being built in a way that should lend itself well to an embedded domain specific
-language, which is a future goal for the project. curl-runnings specs in Dhall
-is also being developed and may fulfill the same needs.
 
 ### Installing
 
@@ -55,9 +50,30 @@ Alternatively, you can compile from source with stack.
 
 Curl runnings tests are just data! A test spec is an object containing an array
 of `cases`, where each item represents a single curl and set of assertions about
-the response. Write your tests specs in a yaml or json file. Note: the legacy
+the response. Write your tests specs in a Dhall, yaml or json file. Note: the legacy
 format of a top level array of test cases is still supported, but may not be in
 future releases.
+
+```dhall
+let JSON = https://prelude.dhall-lang.org/JSON/package.dhall
+
+let CurlRunnings = ./dhall/curl-runnings.dhall
+
+in   CurlRunnings.hydrateCase
+        CurlRunnings.Case::{
+        , expectData = Some
+            ( CurlRunnings.ExpectData.Exactly
+                ( JSON.object
+                    [ { mapKey = "okay", mapValue = JSON.bool True },
+                      { mapKey = "message", mapValue = JSON.string "a message" }]
+                )
+            )
+        , expectStatus = 200
+        , name = "test 1"
+        , requestMethod = CurlRunnings.HttpMethod.GET
+        , url = "http://your-endpoing.com/status"
+        }
+```
 
 
 ```yaml
