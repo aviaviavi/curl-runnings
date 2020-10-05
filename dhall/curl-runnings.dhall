@@ -130,9 +130,24 @@ let BodyType = < json | urlencoded >
 
 let RequestData = < JSON : JSON.Type | UrlEncoded : Map Text Text >
 
+let Auth = < BasicAuth : { username : Text, password : Text } >
+
+let AuthHydrated = { basic : Optional { username : Text, password : Text } }
+
+let hydrateAuth =
+      λ(auth : Auth) →
+        merge
+          { BasicAuth =
+              λ(args : { username : Text, password : Text }) →
+                { basic = Some
+                  { username = args.username, password = args.password }
+                }
+          }
+          auth
+
 let RequestDataHydrated = { bodyType : BodyType, content : RequestData }
 
-let hydrateRquestData =
+let hydrateRequestData =
       λ(reqData : RequestData) →
         merge
           { JSON =
@@ -172,6 +187,7 @@ let Case =
           , expectHeaders : Optional (List ExpectHeaders)
           , allowedRedirects : Natural
           , requestData : Optional RequestData
+          , auth : Optional Auth
           }
       , default =
         { expectData = None ExpectData
@@ -180,6 +196,7 @@ let Case =
         , allowedRedirects = 10
         , queryParameters = [] : Map Text Text
         , requestData = None RequestData
+        , auth = None Auth
         }
       }
 
@@ -195,6 +212,7 @@ let HydratedCase =
           , expectHeaders : Optional (List ExpectHeaders)
           , allowedRedirects : Natural
           , requestData : Optional RequestDataHydrated
+          , auth : Optional AuthHydrated
           }
       , default =
         { expectData = None ExpectResponseHydrated
@@ -203,6 +221,7 @@ let HydratedCase =
         , allowedRedirects = 10
         , queryParameters = JSON.null
         , requestData = None RequestDataHydrated
+        , auth = None AuthHydrated
         }
       }
 
@@ -220,8 +239,9 @@ let hydrateCase =
               Optional/map
                 RequestData
                 RequestDataHydrated
-                hydrateRquestData
+                hydrateRequestData
                 c.requestData
+          , auth = Optional/map Auth AuthHydrated hydrateAuth c.auth
           }
 
 let hydrateCases =
@@ -237,4 +257,7 @@ in  { Case
     , PartialMatcher
     , ExpectHeaders
     , RequestData
+    , Auth
+    , AuthHydrated
+    , hydrateAuth
     }
