@@ -22,7 +22,7 @@ Haskell (though a Haskell setup is absolutely not required to use this tool).
 
 ### Installing
 
-The best way to install curl-runnings is with the [scarf](https://scarf.sh)
+The best way to install curl-runnings is with the [scarf](https://docs.scarf.sh/end-user/)
 package manager.
 
 ```bash
