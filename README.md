@@ -32,7 +32,9 @@ $ curl -L https://scarf.sh/install | bash
 $ scarf install curl-runnings
 ```
 
-Alternatively, you can compile from source with stack.
+Binaries are available on the Releases section of the GitHub page.
+
+You can also compile from source with stack.
 
 ### Writing a test specification
 
