@@ -1,10 +1,10 @@
-let JSON = https://prelude.dhall-lang.org/JSON/package.dhall
+let JSON = https://prelude.dhall-lang.org/v19.0.0/JSON/package.dhall
 
-let List/map = https://prelude.dhall-lang.org/List/map
+let List/map = https://prelude.dhall-lang.org/v19.0.0/List/map
 
-let Optional/map = https://prelude.dhall-lang.org/Optional/map
+let Optional/map = https://prelude.dhall-lang.org/v19.0.0/Optional/map
 
-let Map = https://prelude.dhall-lang.org/Map/Type
+let Map = https://prelude.dhall-lang.org/v19.0.0/Map/Type
 
 let HttpMethod
     : Type
