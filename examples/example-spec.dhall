@@ -5,15 +5,15 @@
 -- can give you extra safety, or you can target the json specification directly
 -- if you prefer. You can import the dhall module directly or via url:
 -- https://raw.githubusercontent.com/aviaviavi/curl-runnings/master/dhall/curl-runnings.dhall
-let JSON = https://prelude.dhall-lang.org/JSON/package.dhall
+let JSON = https://prelude.dhall-lang.org/v18.0.0/JSON/package.dhall
 
 let CurlRunnings = ./dhall/curl-runnings.dhall
 
-let List/map = https://prelude.dhall-lang.org/List/map
+let List/map = https://prelude.dhall-lang.org/v18.0.0/List/map
 
-let Optional/map = https://prelude.dhall-lang.org/Optional/map
+let Optional/map = https://prelude.dhall-lang.org/v18.0.0/Optional/map
 
-let Map = https://prelude.dhall-lang.org/Map/Type
+let Map = https://prelude.dhall-lang.org/v18.0.0/Map/Type
 
 let host = "https://tabdextension.com"
 
