@@ -50,7 +50,7 @@ import           Network.HTTP.Conduit
 import           Network.HTTP.Simple                  hiding (Header)
 import qualified Network.HTTP.Simple                  as HTTP
 import qualified Network.HTTP.Types                   as NT
-import           OpenSSL.Session                      (VerificationMode (..))
+import           OpenSSL.Session                      (VerificationMode (..), contextSetDefaultVerifyPaths)
 import           System.Directory
 import           System.Environment
 import           Testing.CurlRunnings.Internal
@@ -139,7 +139,7 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
                 -- Don't do any loading from custom locations but
                 -- instead use OpenSSL's default settings.
                 -- See https://github.com/snoyberg/http-client/issues/462
-                { HTTP.osslSettingsLoadCerts = \_ -> pure () }
+                { HTTP.osslSettingsLoadCerts = contextSetDefaultVerifyPaths }
             SkipTLSCheck -> HTTP.defaultMakeContext HTTP.defaultOpenSSLSettings
                 { HTTP.osslSettingsVerifyMode = VerifyNone }
 
