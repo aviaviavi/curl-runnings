@@ -42,6 +42,7 @@ packages:
 # extra-deps: []
 extra-deps:
   - HsOpenSSL-0.11.7
+  - http-client-0.3.3
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
