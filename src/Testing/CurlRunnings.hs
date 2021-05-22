@@ -45,12 +45,12 @@ import qualified Dhall.Import
 import qualified Dhall.JSON
 import qualified Dhall.Parser
 import qualified Dhall.TypeCheck
-import qualified Network.HTTP.Client.OpenSSL          as HTTP
+import           Network.Connection                   (TLSSettings (..))
+import           Network.HTTP.Client.TLS              (mkManagerSettings)
 import           Network.HTTP.Conduit
 import           Network.HTTP.Simple                  hiding (Header)
 import qualified Network.HTTP.Simple                  as HTTP
 import qualified Network.HTTP.Types                   as NT
-import           OpenSSL.Session                      (VerificationMode (..), contextSetDefaultVerifyPaths)
 import           System.Directory
 import           System.Environment
 import           Testing.CurlRunnings.Internal
@@ -95,6 +95,17 @@ resultToEither :: Result a -> Either String a
 resultToEither (Error s)   = Left s
 resultToEither (Success a) = Right a
 
+noVerifyTlsManagerSettings :: ManagerSettings
+noVerifyTlsManagerSettings = mkManagerSettings noVerifyTlsSettings Nothing
+
+noVerifyTlsSettings :: TLSSettings
+noVerifyTlsSettings =
+  TLSSettingsSimple
+  { settingDisableCertificateValidation = True
+  , settingDisableSession = True
+  , settingUseServerName = False
+  }
+
 -- | Fetch existing query parameters from the request and append those specfied in the queryParameters field.
 appendQueryParameters :: [KeyValuePair] -> Request -> Request
 appendQueryParameters newParams r = setQueryString (existing ++ newQuery) r where
@@ -133,21 +144,13 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
           return $ CaseFail curlCase Nothing Nothing [QueryFailure curlCase l] 0
         Right interpolatedData -> do
           initReq <- parseRequest $ T.unpack interpolatedUrl
-
-          manager <- newManager $ HTTP.opensslManagerSettings $ case tlsCheckType of
-            DoTLSCheck -> HTTP.defaultMakeContext HTTP.defaultOpenSSLSettings
-                -- Don't do any loading from custom locations but
-                -- instead use OpenSSL's default settings.
-                -- See https://github.com/snoyberg/http-client/issues/462
-                { HTTP.osslSettingsLoadCerts = contextSetDefaultVerifyPaths }
-            SkipTLSCheck -> HTTP.defaultMakeContext HTTP.defaultOpenSSLSettings
-                { HTTP.osslSettingsVerifyMode = VerifyNone }
+          manager <- newManager noVerifyTlsManagerSettings
 
           let !request =
                 setPayload interpolatedData .
                 setRequestHeaders (toHTTPHeaders interpolatedHeaders) .
                 appendQueryParameters interpolatedQueryParams  .
-                setRequestManager manager $
+                (if tlsCheckType == DoTLSCheck then id else (setRequestManager manager)) $
                 initReq { method = B8S.pack . show $ requestMethod curlCase
                         , redirectCount = fromMaybe 10 (allowedRedirects curlCase) }
           logger state DEBUG (pShow request)
