@@ -22,16 +22,6 @@ Haskell (though a Haskell setup is absolutely not required to use this tool).
 
 ### Installing
 
-The best way to install curl-runnings is with the [scarf](https://docs.scarf.sh/end-user/)
-package manager.
-
-```bash
-# If you don't have scarf, you can easily install it with:
-$ curl -L https://scarf.sh/install | bash
- 
-$ scarf install curl-runnings
-```
-
 Binaries are available on the Releases section of the GitHub page.
 
 You can also compile from source with stack.
