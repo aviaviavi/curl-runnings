@@ -2,7 +2,6 @@
 
 [![Build Status](https://travis-ci.org/aviaviavi/curl-runnings.svg?branch=master)](https://travis-ci.org/aviaviavi/curl-runnings) 
 [![Hackage](https://img.shields.io/hackage/v/curl-runnings.svg)](https://hackage.haskell.org/package/curl-runnings)
-[![Scarf](https://scarf.sh/package/badge/curl-runnings)](https://scarf.sh/package/avi/curl-runnings)
 
 _Feel the rhythm! Feel the rhyme! Get on up, it's testing time! curl-runnings!_
 
