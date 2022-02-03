@@ -1,7 +1,7 @@
 {
   description = "Curl Runnings Nix Flake";
   inputs = {
-    nixpkgs.follows = "haskellNix/nixpkgs-2111"; # FLAKE REF
+    nixpkgs.follows = "haskellNix/nixpkgs"; # FLAKE REF
     flake-utils.url = github:numtide/flake-utils;
     haskellNix = {
       url = github:input-output-hk/haskell.nix;
@@ -16,12 +16,12 @@
             haskellNix.overlay
             (final: prev: {
               curlRunnings =
-                final.haskell-nix.project' {
+                final.haskell-nix.cabalProject' {
                   src = ./.;
                   compiler-nix-name = "ghc8107";
                   shell.tools =
                     let
-                      idx = { index-state = "2022-01-01T00:00:00Z"; };
+                      idx = { index-state = "2022-02-01T00:00:00Z"; };
                     in
                     {
                       cabal-install = idx;
@@ -31,7 +31,7 @@
                       hlint = idx;
                       hoogle = idx;
                       hpack = idx;
-                      ormolu = { version = "0.3.1.0"; } // idx;
+                      ormolu = { version = "0.3.1.0"; } // idx; # LATEST BROKEN
                     };
                 };
             })
