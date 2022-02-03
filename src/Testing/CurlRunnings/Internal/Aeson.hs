@@ -10,7 +10,9 @@ module Testing.CurlRunnings.Internal.Aeson
   , toText
   ) where
 
+#if __GLASGOW_HASKELL__ < 810
 import Data.Text (Text)
+#endif
 
 #if MIN_VERSION_aeson(2,0,0)
 

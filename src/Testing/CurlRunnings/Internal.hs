@@ -20,14 +20,11 @@ module Testing.CurlRunnings.Internal
   ) where
 
 import           Control.Monad
-import           Data.Monoid
 import qualified Data.Text          as T
 import qualified Data.Text.Lazy     as TL
 import           Debug.Trace
 import           System.Clock
 import qualified Text.Pretty.Simple as P
-import           Text.Printf
-
 
 makeGreen :: T.Text -> T.Text
 makeGreen s = "\x1B[32m" <> s <> "\x1B[0m"
@@ -83,9 +80,6 @@ nowMillis :: IO Integer
 nowMillis = do
   t <- getTime Realtime
   return $ (toNanoSecs t) `div` 1000000
-
-roundToStr :: (PrintfArg a, Floating a) => a -> String
-roundToStr = printf "%0.2f"
 
 millisToS :: Integer -> Double
 millisToS t = (fromIntegral t :: Double) / 1000.0

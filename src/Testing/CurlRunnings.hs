@@ -15,7 +15,6 @@ module Testing.CurlRunnings
 
 import           Control.Arrow
 import           Control.Exception
-import qualified Control.Exception
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Except
@@ -26,19 +25,13 @@ import qualified Data.ByteString.Char8                as B8S
 import qualified Data.ByteString.Lazy                 as B
 import qualified Data.CaseInsensitive                 as CI
 import           Data.Either
-import           Data.List
+import           Data.List                            (find)
 import           Data.Maybe
-import           Data.Monoid
 import           Data.String                          (fromString)
 import qualified Data.Text                            as T
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as TIO
-import qualified Data.Text.Lazy                       as TL
-import qualified Data.Text.Lazy.IO                    as TLIO
-import           Data.Time.Clock
 import qualified Data.Vector                          as V
-import qualified Data.Vector                          as V
-import qualified Data.Yaml                            as Y
 import qualified Data.Yaml.Include                    as YI
 import qualified Dhall
 import qualified Dhall.Import
@@ -46,7 +39,6 @@ import qualified Dhall.JSON
 import qualified Dhall.Parser
 import qualified Dhall.TypeCheck
 import           Network.Connection                   (TLSSettings (..))
-import           Network.HTTP.Client.TLS              (mkManagerSettings)
 import           Network.HTTP.Conduit
 import           Network.HTTP.Simple                  hiding (Header)
 import qualified Network.HTTP.Simple                  as HTTP
@@ -250,15 +242,17 @@ interpolateHeaders state maybeAuth (HeaderSet headerList) = do
         (Just (BasicAuthentication u p)) ->
           let interpolated = sequence [interpolateQueryString state u, interpolateQueryString state p] in
           case interpolated of
-            Right [u, p] -> Right [Header "Authorization" ("Basic " <> (makeBasicAuthToken u p))]
+            Right [u', p'] -> Right [Header "Authorization" ("Basic " <> (makeBasicAuthToken u' p'))]
             Left l -> Left l
-        Nothing -> Right []
+            _ -> Left $ QueryValidationError "FIXME Pattern match error in interpolatingHeaders"
+        _ -> Right []
   mainHeaders <- (mapM
         (\(Header k v) ->
           case sequence
                   [interpolateQueryString state k, interpolateQueryString state v] of
             Left err       -> Left err
-            Right [k', v'] -> Right $ Header k' v')
+            Right [k', v'] -> Right $ Header k' v'
+            _ -> Left $ QueryValidationError "FIXME Pattern match error in interpolatingHeaders")
       headerList)
   Right . HeaderSet $ mainHeaders <> authHeaders
 
@@ -445,9 +439,9 @@ runReplacements _ valToUpdate = Right valToUpdate
 interpolateViaJSON :: (ToJSON a, FromJSON a) => CurlRunningsState -> a -> Either QueryError a
 interpolateViaJSON state i = do
   replaced <- runReplacements state $ toJSON i
-  resultToEither $ fromJSON replaced where
-    resultToEither (Error e)   = Left $ QueryValidationError $ T.pack e
-    resultToEither (Success a) = Right a
+  resultToEither' $ fromJSON replaced where
+    resultToEither' (Error e)   = Left $ QueryValidationError $ T.pack e
+    resultToEither' (Success a) = Right a
 
 -- | Given a query string, return some text with interpolated values. Type
 -- errors will be returned if queries don't resolve to strings
@@ -542,8 +536,8 @@ jsonContains ::
   -> Bool
 jsonContains f jsonValue =
   let traversedValue = traverseValue jsonValue
-  in f $ \match ->
-       case match of
+  in f $ \match' ->
+       case match' of
          ValueMatch subval -> subval `elem` traversedValue
          KeyMatch key -> any (`containsKey` (A.fromText key)) traversedValue
          KeyValueMatch key subval ->

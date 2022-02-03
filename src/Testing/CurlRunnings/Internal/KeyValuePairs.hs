@@ -1,4 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 -- | A module defining the KeyValuePairs type. This type may be used to
 -- represent a structure in a specification that is a collection of
@@ -17,6 +18,7 @@ module Testing.CurlRunnings.Internal.KeyValuePairs
 import           Data.Aeson
 import           Data.Aeson.Types
 import qualified Data.ByteString.Lazy as LBS
+import           Data.List            ((\\))
 import qualified Data.Text            as T
 import           Data.Text.Encoding   as T
 import qualified Testing.CurlRunnings.Internal.Aeson as A
@@ -26,6 +28,12 @@ newtype KeyValuePairs = KeyValuePairs [KeyValuePair] deriving Show
 
 -- | A representation of a single key-value pair
 data KeyValuePair = KeyValuePair A.KeyType T.Text deriving Show
+
+deriving instance Eq KeyValuePair
+
+-- KeyValuePairs should be considered equal if they contain the same elements.
+instance Eq KeyValuePairs where
+  (==) (KeyValuePairs x) (KeyValuePairs y) = null (x \\ y) && null (y \\ x)
 
 instance ToJSON KeyValuePairs where
   toJSON (KeyValuePairs qs) =

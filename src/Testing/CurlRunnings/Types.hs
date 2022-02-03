@@ -40,11 +40,7 @@ module Testing.CurlRunnings.Types
 
 import           Data.Aeson
 import           Data.Aeson.Types
-import qualified Data.Char                                   as C
-import           Data.Hashable                               (Hashable)
-import qualified Data.HashMap.Strict                         as H
 import           Data.Maybe
-import           Data.Monoid
 import qualified Data.Text                                   as T
 import qualified Data.Vector                                 as V
 import           GHC.Generics
@@ -429,11 +425,6 @@ data Index
   | ArrayIndex Integer
   deriving (Show)
 
-printOriginalQuery :: Index -> String
-printOriginalQuery (CaseResultIndex t) = "RESPONSES[" ++ show t ++ "]"
-printOriginalQuery (KeyIndex key)      = "." ++ T.unpack key
-printOriginalQuery (ArrayIndex i)      = printf "[%d]" i
-
 -- | A single entity to be queries from a json value
 data Query =
   -- | A single query contains a list of discrete index operations
@@ -452,12 +443,6 @@ data InterpolatedQuery
   -- | Just a query, no leading text
   | NonInterpolatedQuery Query
   deriving (Show)
-
-printQueryString :: InterpolatedQuery -> String
-printQueryString (LiteralText t) = show t
-printQueryString (InterpolatedQuery raw (Query indexes)) =
-  printf "%s$<%s>" raw $ concatMap show indexes
-printQueryString (NonInterpolatedQuery (Query indexes)) = printf "$<%s>" (concatMap show indexes)
 
 -- | The full string in which a query appears, eg "prefix-${{RESPONSES[0].key.another_key[0].last_key}}"
 type FullQueryText = T.Text
