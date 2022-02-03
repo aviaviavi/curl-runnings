@@ -23,4 +23,6 @@ jobs:
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
         extraPullNames: cachix,iohk,nix-community
     - run: nix build
-    - run: nix develop --build
+    - run: nix develop --command /usr/bin/env -- bash -c 'hpack && cabal --ghc-options="-Wall -Wcompat -Werror" test'
+    - run: nix build ./.stack-flake
+    - run: nix develop ./.stack-flake --command /usr/bin/env -- bash -c 'hpack && cabal --ghc-options="-Wall -Wcompat -Werror" test'
