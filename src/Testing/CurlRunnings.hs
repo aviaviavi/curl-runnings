@@ -26,10 +26,10 @@ import qualified Data.ByteString.Char8                as B8S
 import qualified Data.ByteString.Lazy                 as B
 import qualified Data.CaseInsensitive                 as CI
 import           Data.Either
-import qualified Data.HashMap.Strict                  as H
 import           Data.List
 import           Data.Maybe
 import           Data.Monoid
+import           Data.String                          (fromString)
 import qualified Data.Text                            as T
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as TIO
@@ -54,6 +54,7 @@ import qualified Network.HTTP.Types                   as NT
 import           System.Directory
 import           System.Environment
 import           Testing.CurlRunnings.Internal
+import qualified Testing.CurlRunnings.Internal.Aeson  as A
 import           Testing.CurlRunnings.Internal.Parser
 import           Testing.CurlRunnings.Types
 import           Text.Printf
@@ -110,7 +111,7 @@ noVerifyTlsSettings =
 appendQueryParameters :: [KeyValuePair] -> Request -> Request
 appendQueryParameters newParams r = setQueryString (existing ++ newQuery) r where
   existing = NT.parseQuery $ queryString r
-  newQuery = NT.simpleQueryToQuery $ fmap (\(KeyValuePair k v) -> (T.encodeUtf8 k, T.encodeUtf8 v)) newParams
+  newQuery = NT.simpleQueryToQuery $ fmap (\(KeyValuePair k v) -> (T.encodeUtf8 . A.toText $ k, T.encodeUtf8 v)) newParams
 
 setPayload :: Maybe Payload -> Request -> Request
 -- TODO - for backwards compatability, empty requests will set an empty json
@@ -121,7 +122,7 @@ setPayload :: Maybe Payload -> Request -> Request
 setPayload Nothing = setRequestBodyJSON emptyObject
 setPayload (Just (JSON v)) = setRequestBodyJSON v
 setPayload (Just (URLEncoded (KeyValuePairs xs))) = setRequestBodyURLEncoded $ kvpairs xs where
-  kvpairs = fmap (\(KeyValuePair k v) -> (T.encodeUtf8 k, T.encodeUtf8 v))
+  kvpairs = fmap (\(KeyValuePair k v) -> (T.encodeUtf8 . A.toText $ k, T.encodeUtf8 v))
 
 -- | Run a single test case, and returns the result. IO is needed here since this method is responsible
 -- for actually curling the test case endpoint and parsing the result.
@@ -282,7 +283,8 @@ printR x = print x >> return x
 runSuite :: CurlSuite -> LogLevel -> TLSCheckType -> IO [CaseResult]
 runSuite (CurlSuite cases filterRegex) logLevel tlsType = do
   fullEnv <- getEnvironment
-  let envMap = H.fromList $ map (\(x, y) -> (T.pack x, T.pack y)) fullEnv
+  let envMap :: A.MapType T.Text
+      envMap = A.fromList $ map (\(x, y) -> (fromString x :: A.KeyType, T.pack y)) fullEnv :: A.MapType T.Text
       filterNameByRegexp curlCase =
         maybe
           True
@@ -389,19 +391,19 @@ runReplacementsOnSubvalues state =
 -- | runReplacements
 runReplacements :: CurlRunningsState -> Value -> Either QueryError Value
 runReplacements state (Object o) =
-  let keys = H.keys o
+  let keys = A.keys o
       keysWithUpdatedKeyVal =
         map
           (\key ->
-             let value = fromJust $ H.lookup key o
+             let value = fromJust $ A.lookup key o
               -- (old key, new key, new value)
              in ( key
-                , interpolateQueryString state key
+                , interpolateQueryString state (A.toText key)
                 , runReplacements state value))
           keys
   in mapRight Object $
      foldr
-       (\((key, eKeyResult, eValueResult) :: ( T.Text
+       (\((key, eKeyResult, eValueResult) :: ( A.KeyType
                                              , Either QueryError T.Text
                                              , Either QueryError Value)) (eObjectToUpdate :: Either QueryError Object) ->
           case (eKeyResult, eValueResult, eObjectToUpdate)
@@ -412,11 +414,12 @@ runReplacements state (Object o) =
             (_, Left queryErr, _) -> Left queryErr
             (_, _, Left queryErr) -> Left queryErr
             (Right newKey, Right newValue, Right objectToUpdate) ->
-              if key /= newKey
-                then let inserted = H.insert newKey newValue objectToUpdate
-                         deleted = H.delete key inserted
+              let newKey' = A.fromText newKey
+              in if key /= newKey'
+                then let inserted = A.insert newKey' newValue objectToUpdate
+                         deleted = A.delete key inserted
                      in Right deleted
-                else Right $ H.insert key newValue objectToUpdate)
+                else Right $ A.insert key newValue objectToUpdate)
        (Right o)
        keysWithUpdatedKeyVal
 runReplacements p (Array a) =
@@ -474,7 +477,7 @@ getStringValueForQuery state i@(InterpolatedQuery rawText (Query _)) =
     Right (String s) -> Right $ rawText <> s
     (Right o)        -> Left $ QueryTypeMismatch "Expected a string" o
 getStringValueForQuery (CurlRunningsState env _ _ _) (InterpolatedQuery rawText (EnvironmentVariable v)) =
-  Right $ rawText <> H.lookupDefault "" v env
+  Right $ rawText <> A.findWithDefault "" (A.fromText v) env
 
 -- | Lookup the value for the specified query
 getValueForQuery ::
@@ -499,7 +502,7 @@ getValueForQuery (CurlRunningsState _ previousResults _ _) full@(NonInterpolated
                         case (eitherVal, index) of
                           (Left l, _) -> Left l
                           (Right (Object o), KeyIndex k) ->
-                            Right $ H.lookupDefault Null k o
+                            Right $ A.findWithDefault Null (A.fromText k :: A.KeyType) o
                           (Right (Array a), ArrayIndex i') ->
                             maybe
                               (Left $
@@ -524,7 +527,7 @@ getValueForQuery (CurlRunningsState _ previousResults _ _) full@(NonInterpolated
       "'$< ... >' queries must start with a RESPONSES[index] query: " ++
       show full
 getValueForQuery (CurlRunningsState env _ _ _) (NonInterpolatedQuery (EnvironmentVariable var)) =
-  Right . String $ H.lookupDefault "" var env
+  Right . String $ A.findWithDefault "" (A.fromText var) env
 getValueForQuery state (InterpolatedQuery _ q) =
   case getValueForQuery state (NonInterpolatedQuery q) of
     Right (String s) -> Right . String $ s
@@ -542,9 +545,9 @@ jsonContains f jsonValue =
   in f $ \match ->
        case match of
          ValueMatch subval -> subval `elem` traversedValue
-         KeyMatch key -> any (`containsKey` key) traversedValue
+         KeyMatch key -> any (`containsKey` (A.fromText key)) traversedValue
          KeyValueMatch key subval ->
-           any (\o -> containsKeyVal o key subval) traversedValue
+           any (\o -> containsKeyVal o (A.fromText key) subval) traversedValue
 
 -- | Does the json value contain all of these sub-values?
 jsonContainsAll :: Value -> [JsonSubExpr] -> Bool
@@ -555,24 +558,24 @@ jsonContainsAny :: Value -> [JsonSubExpr] -> Bool
 jsonContainsAny = jsonContains any
 
 -- | Does the json value contain the given key value pair?
-containsKeyVal :: Value -> T.Text -> Value -> Bool
+containsKeyVal :: Value -> A.KeyType -> Value -> Bool
 containsKeyVal jsonValue key val =
   case jsonValue of
-    Object o -> H.lookup key o == Just val
+    Object o -> A.lookup key o == Just val
     _        -> False
 
 -- | Does the json value contain the given key value pair?
-containsKey :: Value -> T.Text -> Bool
+containsKey :: Value -> A.KeyType -> Bool
 containsKey jsonValue key =
   case jsonValue of
-    Object o -> isJust $ H.lookup key o
+    Object o -> isJust $ A.lookup key o
     _        -> False
 
 -- | Fully traverse the json and return a list of all the values
 traverseValue :: Value -> [Value]
 traverseValue val =
   case val of
-    Object o     -> val : concatMap traverseValue (H.elems o)
+    Object o     -> val : concatMap traverseValue (A.elems o)
     Array o      -> val : concatMap traverseValue o
     n@(Number _) -> [n]
     s@(String _) -> [s]

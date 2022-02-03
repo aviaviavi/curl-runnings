@@ -17,15 +17,15 @@ module Testing.CurlRunnings.Internal.KeyValuePairs
 import           Data.Aeson
 import           Data.Aeson.Types
 import qualified Data.ByteString.Lazy as LBS
-import           Data.HashMap.Strict  as H
 import qualified Data.Text            as T
 import           Data.Text.Encoding   as T
+import qualified Testing.CurlRunnings.Internal.Aeson as A
 
 -- | A container for a list of key-value pairs
 newtype KeyValuePairs = KeyValuePairs [KeyValuePair] deriving Show
 
 -- | A representation of a single key-value pair
-data KeyValuePair = KeyValuePair T.Text T.Text deriving Show
+data KeyValuePair = KeyValuePair A.KeyType T.Text deriving Show
 
 instance ToJSON KeyValuePairs where
   toJSON (KeyValuePairs qs) =
@@ -33,8 +33,8 @@ instance ToJSON KeyValuePairs where
 
 instance FromJSON KeyValuePairs where
   parseJSON = withObject "keyValuePairs" parseKeyValuePairs where
-    parseKeyValuePairs o = KeyValuePairs <$> traverse parseKeyValuePair (H.toList o)
-    parseKeyValuePair (t, v) = KeyValuePair t <$> parseSingleValueType v
+    parseKeyValuePairs o = KeyValuePairs <$> traverse parseKeyValuePair (A.toList o)
+    parseKeyValuePair (k, v) = KeyValuePair k <$> parseSingleValueType v
 
 parseSingleValueType :: Value -> Parser T.Text
 parseSingleValueType (Bool b)   = parseToText b

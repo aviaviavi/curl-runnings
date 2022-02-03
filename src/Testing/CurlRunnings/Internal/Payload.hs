@@ -53,28 +53,28 @@ module Testing.CurlRunnings.Internal.Payload
 
 import           Data.Aeson
 import qualified Data.Char                                   as C
-import qualified Data.HashMap.Strict                         as H
 import qualified Data.Text                                   as T
 import           GHC.Generics
+import qualified Testing.CurlRunnings.Internal.Aeson         as A
 import           Testing.CurlRunnings.Internal.KeyValuePairs
 
 data Payload = JSON Value | URLEncoded KeyValuePairs deriving Generic
 
 instance Show Payload where
   show (JSON v) = show v
-  show (URLEncoded (KeyValuePairs xs)) = T.unpack $ T.intercalate "&" $ fmap (\(KeyValuePair k v) -> k <> "=" <> v) xs
+  show (URLEncoded (KeyValuePairs xs)) = T.unpack $ T.intercalate "&" $ fmap (\(KeyValuePair k v) -> A.toText k <> "=" <> v) xs
 
-payloadTagFieldName :: T.Text
+payloadTagFieldName :: A.KeyType
 payloadTagFieldName = "bodyType"
 
-payloadContentsFieldName :: T.Text
+payloadContentsFieldName :: A.KeyType
 payloadContentsFieldName = "content"
 
 instance FromJSON Payload where
   parseJSON v = withObject "payload" parsePayload v where
-    parsePayload o = if not (H.member payloadTagFieldName o) then return (JSON v) else genericParseJSON payloadOptions v
-    payloadOptions = defaultOptions { sumEncoding = TaggedObject { tagFieldName = T.unpack payloadTagFieldName
-                                                                 , contentsFieldName = T.unpack payloadContentsFieldName
+    parsePayload o = if not (A.member payloadTagFieldName o) then return (JSON v) else genericParseJSON payloadOptions v
+    payloadOptions = defaultOptions { sumEncoding = TaggedObject { tagFieldName = T.unpack . A.toText $ payloadTagFieldName
+                                                                 , contentsFieldName = T.unpack . A.toText $ payloadContentsFieldName
                                                                  }
                                     , constructorTagModifier = fmap C.toLower
                                     }

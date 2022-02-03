@@ -13,6 +13,7 @@ import           System.Directory
 import           Test.Hspec
 import           Testing.CurlRunnings
 import           Testing.CurlRunnings.Internal
+import qualified Testing.CurlRunnings.Internal.Aeson         as A
 import           Testing.CurlRunnings.Internal.Headers
 import           Testing.CurlRunnings.Internal.KeyValuePairs
 import           Testing.CurlRunnings.Internal.Parser
@@ -156,7 +157,7 @@ shouldBeHeaders actual expected =
   let expectedHeaders = Right . HeaderSet $ uncurry Header <$> expected in
     actual `shouldBe` expectedHeaders
 
-shouldBeKeyValuePairs :: ByteString -> [(T.Text, T.Text)] -> Expectation
+shouldBeKeyValuePairs :: ByteString -> [(A.KeyType, T.Text)] -> Expectation
 shouldBeKeyValuePairs json expected = actual `shouldBe` expectedKeyValuePairs where
   actual = eitherDecodeStrict json
   expectedKeyValuePairs = Right . KeyValuePairs $ uncurry KeyValuePair <$> expected
