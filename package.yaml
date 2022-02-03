@@ -23,6 +23,7 @@ library:
   - Testing.CurlRunnings
   - Testing.CurlRunnings.Types
   - Testing.CurlRunnings.Internal
+  - Testing.CurlRunnings.Internal.Aeson
   - Testing.CurlRunnings.Internal.Parser
   - Testing.CurlRunnings.Internal.Headers
   - Testing.CurlRunnings.Internal.KeyValuePairs
