@@ -40,15 +40,12 @@ module Testing.CurlRunnings.Types
 
 import           Data.Aeson
 import           Data.Aeson.Types
-import qualified Data.Char                                   as C
-import           Data.Hashable                               (Hashable)
-import qualified Data.HashMap.Strict                         as H
 import           Data.Maybe
-import           Data.Monoid
 import qualified Data.Text                                   as T
 import qualified Data.Vector                                 as V
 import           GHC.Generics
 import           Testing.CurlRunnings.Internal
+import qualified Testing.CurlRunnings.Internal.Aeson         as A
 import           Testing.CurlRunnings.Internal.Headers
 import           Testing.CurlRunnings.Internal.KeyValuePairs
 import           Testing.CurlRunnings.Internal.Payload
@@ -92,9 +89,9 @@ instance FromJSON JsonMatcher where
     | justAndNotEmpty "notContains" v = NotContains <$> v .: "notContains"
   parseJSON invalid = typeMismatch "JsonMatcher" invalid
 
-justAndNotEmpty :: (Eq k, Hashable k) => k -> H.HashMap k Value -> Bool
+justAndNotEmpty :: A.KeyType -> A.MapType Value -> Bool
 justAndNotEmpty key obj =
-  (isJust $ H.lookup key obj) && (H.lookup key obj /= Just Null)
+  isJust (A.lookup key obj) && A.lookup key obj /= Just Null
 
 -- | Simple predicate to check value constructor type
 isContains :: JsonMatcher -> Bool
@@ -177,12 +174,12 @@ data JsonSubExpr
 instance FromJSON JsonSubExpr where
   parseJSON (Object v)
     | justAndNotEmpty "keyValueMatch" v =
-      let toParse = fromJust $ H.lookup "keyValueMatch" v
+      let toParse = fromJust $ A.lookup "keyValueMatch" v
       in case toParse of
            Object o -> KeyValueMatch <$> o .: "key" <*> o .: "value"
            _        -> typeMismatch "JsonSubExpr" toParse
     | justAndNotEmpty "keyMatch" v =
-      let toParse = fromJust $ H.lookup "keyMatch" v
+      let toParse = fromJust $ A.lookup "keyMatch" v
       in case toParse of
            String s -> return $ KeyMatch s
            _        -> typeMismatch "JsonSubExpr" toParse
@@ -403,7 +400,7 @@ isFailing :: CaseResult -> Bool
 isFailing = not . isPassing
 
 -- | A map of the system environment
-type Environment = H.HashMap T.Text T.Text
+type Environment = A.MapType T.Text
 
 data TLSCheckType = SkipTLSCheck | DoTLSCheck deriving (Show, Eq)
 
@@ -428,11 +425,6 @@ data Index
   | ArrayIndex Integer
   deriving (Show)
 
-printOriginalQuery :: Index -> String
-printOriginalQuery (CaseResultIndex t) = "RESPONSES[" ++ show t ++ "]"
-printOriginalQuery (KeyIndex key)      = "." ++ T.unpack key
-printOriginalQuery (ArrayIndex i)      = printf "[%d]" i
-
 -- | A single entity to be queries from a json value
 data Query =
   -- | A single query contains a list of discrete index operations
@@ -451,12 +443,6 @@ data InterpolatedQuery
   -- | Just a query, no leading text
   | NonInterpolatedQuery Query
   deriving (Show)
-
-printQueryString :: InterpolatedQuery -> String
-printQueryString (LiteralText t) = show t
-printQueryString (InterpolatedQuery raw (Query indexes)) =
-  printf "%s$<%s>" raw $ concatMap show indexes
-printQueryString (NonInterpolatedQuery (Query indexes)) = printf "$<%s>" (concatMap show indexes)
 
 -- | The full string in which a query appears, eg "prefix-${{RESPONSES[0].key.another_key[0].last_key}}"
 type FullQueryText = T.Text

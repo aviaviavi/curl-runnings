@@ -1,18 +1,17 @@
 {-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE QuasiQuotes        #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
 module Main where
 
 import           Data.Aeson
 import           Data.ByteString                             (ByteString)
 import           Data.Either
-import           Data.List
 import qualified Data.Text                                   as T
 import           System.Directory
 import           Test.Hspec
 import           Testing.CurlRunnings
 import           Testing.CurlRunnings.Internal
+import qualified Testing.CurlRunnings.Internal.Aeson         as A
 import           Testing.CurlRunnings.Internal.Headers
 import           Testing.CurlRunnings.Internal.KeyValuePairs
 import           Testing.CurlRunnings.Internal.Parser
@@ -92,12 +91,12 @@ main = hspec $
   it "arrayGet should handle positive and negative indexes correctly" $ do
     let a = [1, 2, 3]
         b = [] :: [Int]
-    (arrayGet a 0) `shouldBe` Just 1
-    (arrayGet a 1) `shouldBe` Just 2
-    (arrayGet a 2) `shouldBe` Just 3
-    (arrayGet a (-1)) `shouldBe` Just 3
-    (arrayGet a (-2)) `shouldBe` Just 2
-    (arrayGet a (-3)) `shouldBe` Just 1
+    (arrayGet a 0) `shouldBe` Just (1 :: Integer)
+    (arrayGet a 1) `shouldBe` Just (2 :: Integer)
+    (arrayGet a 2) `shouldBe` Just (3 :: Integer)
+    (arrayGet a (-1)) `shouldBe` Just (3 :: Integer)
+    (arrayGet a (-2)) `shouldBe` Just (2 :: Integer)
+    (arrayGet a (-3)) `shouldBe` Just (1 :: Integer)
     (arrayGet a (-4)) `shouldBe` Nothing
     (arrayGet a 3) `shouldBe` Nothing
     (arrayGet b 0) `shouldBe` Nothing
@@ -156,16 +155,10 @@ shouldBeHeaders actual expected =
   let expectedHeaders = Right . HeaderSet $ uncurry Header <$> expected in
     actual `shouldBe` expectedHeaders
 
-shouldBeKeyValuePairs :: ByteString -> [(T.Text, T.Text)] -> Expectation
-shouldBeKeyValuePairs json expected = actual `shouldBe` expectedKeyValuePairs where
-  actual = eitherDecodeStrict json
+shouldBeKeyValuePairs :: ByteString -> [(A.KeyType, T.Text)] -> Expectation
+shouldBeKeyValuePairs j expected = actual `shouldBe` expectedKeyValuePairs where
+  actual = eitherDecodeStrict j
   expectedKeyValuePairs = Right . KeyValuePairs $ uncurry KeyValuePair <$> expected
-
-deriving instance Eq KeyValuePair
-
--- KeyValuePairs should be considered equal if they contain the same elements.
-instance Eq KeyValuePairs where
-  (==) (KeyValuePairs x) (KeyValuePairs y) = null (x \\ y) && null (y \\ x)
 
 isURLEncoded :: Either String Payload -> Bool
 isURLEncoded (Right (URLEncoded _)) = True

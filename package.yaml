@@ -1,5 +1,5 @@
 name:                curl-runnings
-version:             0.16.4
+version:             0.17.0
 github:              aviaviavi/curl-runnings
 license:             MIT
 author:              Avi Press
@@ -23,12 +23,13 @@ library:
   - Testing.CurlRunnings
   - Testing.CurlRunnings.Types
   - Testing.CurlRunnings.Internal
+  - Testing.CurlRunnings.Internal.Aeson
   - Testing.CurlRunnings.Internal.Parser
   - Testing.CurlRunnings.Internal.Headers
   - Testing.CurlRunnings.Internal.KeyValuePairs
   - Testing.CurlRunnings.Internal.Payload
   dependencies:
-  - aeson >=1.2.4.0 && <2.0
+  - aeson >=1.2.4.0
   - bytestring >=0.10.8.2
   - case-insensitive >=0.2.1
   - base64-bytestring >=1.0.0.2
@@ -37,8 +38,6 @@ library:
   - dhall-json >= 1.0.9
   - directory >=1.3.0.2
   - hashable >= 1.2.7.0
-  - hspec >=2.4.4
-  - hspec-expectations >=0.8.2
   - http-conduit >=2.3.6
   - megaparsec >=7.0.4
   - connection >=0.2.8
@@ -47,7 +46,6 @@ library:
   - pretty-simple >=2.0.2.1
   - regex-posix >=0.95.2
   - text >=1.2.2.2
-  - time >=1.8.0.2
   - transformers >=0.5.2.0
   - unordered-containers >=0.2.8.0
   - vector >=0.12.0
@@ -65,7 +63,7 @@ executables:
     - base >=4.7
     - cmdargs >=0.10.20
     - directory >=1.3.0.2
-    - aeson >=1.2.4.0 && <2.0
+    - aeson >=1.2.4.0
     - http-conduit >=2.2.4
     - bytestring >=0.10.8.2
     - curl-runnings
@@ -85,7 +83,7 @@ tests:
     - bytestring >=0.10.8.2
     - curl-runnings
     - directory >=1.3.0.2
-    - aeson >=1.2.4.0 && <2.0
+    - aeson >=1.2.4.0
     - hspec >= 2.4.4
     - hspec-expectations >=0.8.2
     - raw-strings-qq >= 1.1

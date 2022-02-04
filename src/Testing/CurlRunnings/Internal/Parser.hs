@@ -34,9 +34,9 @@ module Testing.CurlRunnings.Internal.Parser
       parseQuery
     ) where
 
-import           Data.Bifunctor             (Bifunctor (..))
-import           Data.Char                  (isAscii)
-import           Data.List
+import           Data.Bifunctor             ()
+import           Data.Char                  ()
+import           Data.List                  (isInfixOf)
 import qualified Data.Text                  as T
 import           Data.Void
 import           Testing.CurlRunnings.Types
