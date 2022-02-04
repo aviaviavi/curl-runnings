@@ -1,3 +1,5 @@
 .stack-work/
 curl-runnings.cabal
 *~
+dist-newstyle/
+result
