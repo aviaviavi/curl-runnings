@@ -10,10 +10,6 @@ module Testing.CurlRunnings.Internal.Aeson
   , toText
   ) where
 
-#if __GLASGOW_HASKELL__ < 810
-import Data.Text (Text)
-#endif
-
 #if MIN_VERSION_aeson(2,0,0)
 
 import Data.Aeson.KeyMap as Map
@@ -24,7 +20,8 @@ type KeyType = Key
 
 #else
 
-import Data.HashMap.Strict as Map
+import Data.Text (Text)
+import Data.HashMap.Strict as Map hiding (findWithDefault)
 
 type MapType v = Map.HashMap Text v
 type KeyType = Text
