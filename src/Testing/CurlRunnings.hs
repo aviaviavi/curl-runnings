@@ -140,8 +140,8 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
           manager <- newManager noVerifyTlsManagerSettings
 
           let !request =
-                setPayload interpolatedData .
                 setRequestHeaders (toHTTPHeaders interpolatedHeaders) .
+                setPayload interpolatedData .
                 appendQueryParameters interpolatedQueryParams  .
                 (if tlsCheckType == DoTLSCheck then id else (setRequestManager manager)) $
                 initReq { method = B8S.pack . show $ requestMethod curlCase
