@@ -105,16 +105,35 @@ appendQueryParameters newParams r = setQueryString (existing ++ newQuery) r wher
   existing = NT.parseQuery $ queryString r
   newQuery = NT.simpleQueryToQuery $ fmap (\(KeyValuePair k v) -> (T.encodeUtf8 . A.toText $ k, T.encodeUtf8 v)) newParams
 
+resetContentTypeIfOverridden :: Request -> Request-> Request
+resetContentTypeIfOverridden old new =
+  if (not $ null (getRequestHeader "Content-Type" old))
+    then (setRequestHeader
+            "Content-Type"
+            (getRequestHeader "Content-Type" old)
+            new)
+    else new
+
+
+-- | Sets the payload based on the provided payload type. If a custom
+-- "Content-Type" header is provided, it will be preserved
 setPayload :: Maybe Payload -> Request -> Request
 -- TODO - for backwards compatability, empty requests will set an empty json
 -- payload. Given that we support multiple content types, this funtionality
 -- isn't exactly correct anymore. This behavior should be considered
 -- deprecated and will be updated with the next major version release of
 -- curl-runnings.
-setPayload Nothing = setRequestBodyJSON emptyObject
-setPayload (Just (JSON v)) = setRequestBodyJSON v
-setPayload (Just (URLEncoded (KeyValuePairs xs))) = setRequestBodyURLEncoded $ kvpairs xs where
-  kvpairs = fmap (\(KeyValuePair k v) -> (T.encodeUtf8 . A.toText $ k, T.encodeUtf8 v))
+setPayload Nothing req =
+  resetContentTypeIfOverridden req . setRequestBodyJSON emptyObject $ req
+setPayload (Just (JSON v)) req =
+  resetContentTypeIfOverridden req . (setRequestBodyJSON v) $ req
+setPayload (Just (URLEncoded (KeyValuePairs xs))) req =
+  resetContentTypeIfOverridden req . (setRequestBodyURLEncoded $ kvpairs xs) $
+  req
+  where
+    kvpairs =
+      fmap
+        (\(KeyValuePair k v) -> (T.encodeUtf8 . A.toText $ k, T.encodeUtf8 v))
 
 -- | Run a single test case, and returns the result. IO is needed here since this method is responsible
 -- for actually curling the test case endpoint and parsing the result.
@@ -140,8 +159,8 @@ runCase state@(CurlRunningsState _ _ _ tlsCheckType) curlCase = do
           manager <- newManager noVerifyTlsManagerSettings
 
           let !request =
-                setRequestHeaders (toHTTPHeaders interpolatedHeaders) .
                 setPayload interpolatedData .
+                setRequestHeaders (toHTTPHeaders interpolatedHeaders) .
                 appendQueryParameters interpolatedQueryParams  .
                 (if tlsCheckType == DoTLSCheck then id else (setRequestManager manager)) $
                 initReq { method = B8S.pack . show $ requestMethod curlCase
