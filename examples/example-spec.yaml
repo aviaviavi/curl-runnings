@@ -130,3 +130,14 @@ cases:
     - "Hello: world"
     -
       value: "Value-With-Key-We-Dont-Care-About"
+
+  - name: We use a json content type by default
+    url: http://your-url.com/other/path
+    requestMethod: GET
+    expectStatus: 200
+
+  - name: Override the content type
+    url: http://your-url.com/other/path
+    requestMethod: GET
+    headers: "Content-Type: an overridden content type"
+    expectStatus: 200
