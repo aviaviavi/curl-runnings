@@ -124,3 +124,5 @@ tests:
 
 Contributions in any form are welcome and encouraged. Don't be shy! :D
 
+<img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=81e4a851-7a38-4727-af19-05a9106609c0" />
+
